@@ -114,6 +114,8 @@ you should have the correct names an paths like this:
     relative_path: /shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7/config/robotic_arm.srdf
     
 check to have the correct folders (some of this folders and files will be created later from the build process) :
+
+```
 shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7$ tree
 .
 ├── CMakeLists.txt
@@ -140,6 +142,9 @@ shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7$ tree
 └── package.xml
 
 3 directories, 20 files
+
+```
+
 
 
 
