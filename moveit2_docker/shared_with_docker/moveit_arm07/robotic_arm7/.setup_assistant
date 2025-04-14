@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: "robotic_arm7"
+    relative_path: /shared_with_docker/moveit_arm07/robotic_arm7.urdf
+  srdf:
+    relative_path: /shared_with_docker/moveit_arm07/robotic_arm7/config/robotic_arm.srdf
+  package_settings:
+    author_name: Marco
+    author_email: elettronicaopensource@gmail.com
+    generated_timestamp: 1741896863
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

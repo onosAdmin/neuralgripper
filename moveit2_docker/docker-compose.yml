@@ -35,7 +35,7 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
-      - /media/data/progetti/neural_gripper/neuralgripper/moveit2_docker:/shared_with_docker
+      - /media/data/progetti/neural_gripper/neuralgripper/moveit2_docker/shared_with_docker:/shared_with_docker
     devices:
       - /dev:/dev
     environment:

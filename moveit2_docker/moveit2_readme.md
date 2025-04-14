@@ -46,7 +46,7 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
-      - /media/data/progetti/neural_gripper/neuralgripper:/shared_with_docker
+      - /media/data/progetti/neural_gripper/neuralgripper/shared_with_docker:/shared_with_docker
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
@@ -54,6 +54,13 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       
 ```
+
+
+
+Make sure to modify:
+/media/data/progetti/neural_gripper/neuralgripper/shared_with_docker:/shared_with_docker
+with your folder
+
 
 ## Run the container
 
@@ -109,14 +116,14 @@ If after you have configurated your custom arm and then you could not open the c
 you should have the correct names an paths like this:
   urdf:
     package: "robotic_arm7"
-    relative_path: /shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7.urdf
+    relative_path: /shared_with_docker/moveit_arm07/robotic_arm7.urdf
   srdf:
-    relative_path: /shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7/config/robotic_arm.srdf
+    relative_path: /shared_with_docker/moveit_arm07/robotic_arm7/config/robotic_arm.srdf
     
 check to have the correct folders (some of this folders and files will be created later from the build process) :
 
 ```
-shared_with_docker/ros2_ws/moveit_arm07/robotic_arm7$ tree
+shared_with_docker/moveit_arm07/robotic_arm7$ tree
 .
 ├── CMakeLists.txt
 ├── config
@@ -171,7 +178,7 @@ and remove the line where there is this:
 Now source the new compiled files:
 
 ```
-cd /shared_with_docker/ros2_ws && source install/setup.bash
+cd /shared_with_docker/ && source install/setup.bash
 ```
 
 
@@ -189,8 +196,7 @@ If you don't see the arm:
 look here:
  https://github.com/moveit/moveit2/issues/2738
 
-Open the file 
-aprire il file /shared_with_docker/ros2_ws/robotic_arm7/config/joint_limits.yaml
+Open the file  /shared_with_docker/robotic_arm7/config/joint_limits.yaml
 
 modify alll the limits adding .0   in order to force a casting to float
 
@@ -203,7 +209,7 @@ And set all the  has_acceleration_limits to true:
 
   ``` has_acceleration_limits: true ```
 
- 
+
  
 Example of a correct file: 
  
@@ -253,13 +259,18 @@ joint_limits:
 
 Then you should save and compile again:
 
+```
+cd /shared_with_docker/
 colcon build --packages-select robotic_arm7
 source install/setup.bash
+
+```
 
 
 Now retry:
 
 ```
+cd /shared_with_docker/
 ros2 launch robotic_arm7 demo.launch.py
 ```
 
@@ -276,7 +287,7 @@ If the planning is not working and you see the error: joint must have an acceler
 
 You should modify:
 
-/shared_with_docker/ros2_ws/robotic_arm7/config/joint_limits.yaml 
+/shared_with_docker/robotic_arm7/config/joint_limits.yaml 
 to set the has_acceleration_limits to true for all the joints
 
 ```
@@ -296,7 +307,7 @@ If you have this error:
 
 
 
-modify   /shared_with_docker/ros2_ws/robotic_arm7/config/joint_limits.yaml
+modify   /shared_with_docker/robotic_arm7/config/joint_limits.yaml
 Add this joint at the start:
 
   virtual_joint/x:
@@ -315,8 +326,65 @@ Add this joint at the start:
 
 
 
-Remember to alway compile again after a change!!!
+Remember to always compile again after a change!!!
 
+
+
+
+While on a terminal you have running ros2 launch robotic_arm7 demo.launch.py
+
+Open a second terminal  inside the docker:
+```
+docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
+
+```
+
+
+
+if you want to controll the robot arm using serial port , first install pyserial
+
+Since I put pyserial ready to install folder in this repository you could just do:
+
+```
+cd /shared_with_docker/pyserial-3.5  && python3 setup.py install  && cd ..
+
+```
+
+Now run the python script:
+
+```
+cd /shared_with_docker/ && source /opt/ros/rolling/setup.bash  && source install/setup.bash
+
+python3 control_servos_from_manual_moveit2.py
+
+
+```
+
+
+
+Now open a third terminal inside docker :
+
+```
+docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
+
+```
+
+You can run the python controll script, this script will ask moveit2 to move the robotic arm to different coordinates
+control_servos_from_manual_moveit2.py  will read the current arm joints positions convert radiant to degrees and
+ send each value to the esp32 that will then controll each servomotor.
+
+
+```
+
+cd /shared_with_docker/ && source /opt/ros/rolling/setup.bash  && source install/setup.bash
+
+python3 planning_test15.py
+
+```
+
+
+Make sure to have the esp32 flashed with the correct circuitpython code connected to the usb of your pc before starting the docker
+otherwise docker will not have access tro the serial port and the script will not work.
 
 
 
