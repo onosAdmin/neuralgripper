@@ -160,6 +160,8 @@ shared_with_docker/moveit_arm07/robotic_arm7$ tree
 ```
 cd /shared_with_docker/
 colcon build --packages-select robotic_arm7
+cd /shared_with_docker/ && source install/setup.bash && source /opt/ros/rolling/setup.bash
+
 
 ```
 
@@ -378,7 +380,7 @@ control_servos_from_manual_moveit2.py  will read the current arm joints position
 
 cd /shared_with_docker/ && source /opt/ros/rolling/setup.bash  && source install/setup.bash
 
-python3 planning_test15.py
+python3 planning_move_test.py
 
 ```
 
