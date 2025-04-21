@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1
 # Install basic dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    vim \
+    x11-apps \
     gnupg2 \
     lsb-release \
     software-properties-common \
@@ -65,17 +67,46 @@ RUN rosdep init || echo "rosdep already initialized" && rosdep update
 
 
 
+# Install CycloneDDS for ros2 external communication
+RUN apt-get update && apt-get install -y \
+    ros-rolling-rmw-cyclonedds-cpp \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install --quiet -y --no-install-recommends \
-  gstreamer1.0-gl \
-  gstreamer1.0-opencv \
-  gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-good \
-  gstreamer1.0-plugins-ugly \
-  gstreamer1.0-tools \
-  libgstreamer-plugins-base1.0-dev \
-  libgstreamer1.0-0 \
-  libgstreamer1.0-dev
+# Set CycloneDDS as the default RMW implementation
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV CYCLONEDDS_URI=file:///cyclonedds.xml
+
+
+# Optional pyserial
+COPY pyserial-3.5 /pyserial-3.5
+RUN cd /pyserial-3.5 && python3 setup.py install
+
+
+
+
+# Install MoveIt 2 dependencies (ROS 2 Rolling)
+RUN apt-get update && apt-get install -y \
+    ros-rolling-moveit \
+    ros-rolling-moveit-ros-visualization \
+    ros-rolling-moveit-planners-ompl \
+    ros-rolling-moveit-servo \
+    ros-rolling-moveit-resources \
+    ros-rolling-moveit-visual-tools \
+    ros-rolling-ros2-control \
+    ros-rolling-ros2-controllers \
+    && rm -rf /var/lib/apt/lists/*
+
+
+#RUN apt-get update && apt-get install --quiet -y --no-install-recommends \
+#  gstreamer1.0-gl \
+#  gstreamer1.0-opencv \
+#  gstreamer1.0-plugins-bad \
+#  gstreamer1.0-plugins-good \
+#  gstreamer1.0-plugins-ugly \
+#  gstreamer1.0-tools \
+#  libgstreamer-plugins-base1.0-dev \
+#  libgstreamer1.0-0 \
+#  libgstreamer1.0-dev
 
 
 

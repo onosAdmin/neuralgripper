@@ -23,6 +23,7 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
     -D WITH_V4L=ON \
     -D WITH_TBB=ON \
     -D WITH_FFMPEG=ON \
+    -D BUILD_opencv_hdf=OFF \
     -D BUILD_TESTS=OFF \
     -D BUILD_PERF_TESTS=OFF \
     -D BUILD_EXAMPLES=OFF \

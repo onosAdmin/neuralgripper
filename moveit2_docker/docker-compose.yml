@@ -63,4 +63,7 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all
       ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
-      CYCLONEDDS_URI: file:///cyclonedds.xml
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      CYCLONEDDS_URI=file: ///cyclonedds.xml
+      
+      
