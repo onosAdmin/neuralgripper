@@ -97,6 +97,17 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 
+
+
+
+
+RUN apt-get update && apt-get install -y \
+    libmpeg2-4 \  
+    gstreamer1.0-plugins-bad \ 
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-ugly \ 
+    && rm -rf /var/lib/apt/lists/*
+    
 #RUN apt-get update && apt-get install --quiet -y --no-install-recommends \
 #  gstreamer1.0-gl \
 #  gstreamer1.0-opencv \

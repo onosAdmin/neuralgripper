@@ -1,0 +1,1 @@
+MG996R Servo Model  by PagliaIndustries on Thingiverse: https://www.thingiverse.com/thing:4894842

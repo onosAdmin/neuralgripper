@@ -1,0 +1,1 @@
+ESP32 BT Robotic Arm with High Torque Servos + Android App by DavTech_3D on Thingiverse: https://www.thingiverse.com/thing:6896222

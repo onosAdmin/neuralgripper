@@ -88,7 +88,7 @@ Inside you should test if opencv has gstreamer support with:
 
 ```
 
-root@4bc865a6c894:/# python3 -c "import cv2; print(cv2.getBuildInformation())" | grep -E "(GStreamer|CUDA|OpenCL|V4L|FFmpeg|gdal)"
+python3 -c "import cv2; print(cv2.getBuildInformation())" | grep -E "(GStreamer|CUDA|OpenCL|V4L|FFmpeg|gdal)"
 
 ```
 

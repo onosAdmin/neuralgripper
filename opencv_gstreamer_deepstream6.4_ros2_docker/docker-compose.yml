@@ -1,9 +1,6 @@
-# Example command:
-#   Humble on a NVIDIA system:
-#   DOCKER_IMAGE=humble-humble-tutorial-source docker compose run gpu
-#   Rolling without discrete graphics:
-#   DOCKER_IMAGE=main-rolling-tutorial-source compose run cpu
-#DOCKER_IMAGE=main-jazzy-tutorial-source compose run gpu
+#docker-compose run --rm moveit2
+#docker-compose run --rm yoloros2
+
 services:
   moveit2:
     #image: moveit/moveit2:main-jazzy-tutorial-source
@@ -63,7 +60,6 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all
       ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
-      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
-      CYCLONEDDS_URI=file: ///cyclonedds.xml
+      CYCLONEDDS_URI: file:///cyclonedds.xml
       
       
