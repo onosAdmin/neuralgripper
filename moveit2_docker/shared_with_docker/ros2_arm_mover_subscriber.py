@@ -53,6 +53,12 @@ class ArmControlSubscriber(Node):
                 self.get_logger().info(f"{action} grabber to position: {grabber_pos}")
                 # Here you would send the grabber command to your hardware
 
+            if delta_degrees_x > 3:
+                delta_degrees_x = 3
+
+            if delta_degrees_x < -3:
+                delta_degrees_x = -3
+
             self.move_base(delta_degrees_x)
 
         except json.JSONDecodeError as e:
@@ -93,11 +99,6 @@ def main(args=None):
     rclpy.init(args=args)
     arm_subscriber = ArmControlSubscriber()
     #controller = RotatingBaseController()
-
-    try:
-        move_base(controller)
-    except Exception as e:
-        print(f"\nError occurred: {e}")
 
     rclpy.spin(arm_subscriber)
     

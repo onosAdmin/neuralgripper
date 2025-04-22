@@ -28,7 +28,7 @@ class ArmControlNode(Node):
         self.servo_y_position = 90  # Range: 0-180
         self.MAX_SERVO_STEP = 15    # Maximum step size for servo movement
         self.CENTER_THRESHOLD = 20  # Pixel threshold to consider object centered
-        self.STABILIZATION_DELAY = 0.15  # Seconds to wait after movement
+        self.STABILIZATION_DELAY = 0.85  # Seconds to wait after movement
 
         # Movement control variables
         self.last_move_time = 0
@@ -86,10 +86,10 @@ class ArmControlNode(Node):
         
         if abs(diff_x) > self.CENTER_THRESHOLD:
             if diff_x > 0:
-                self.servo_x_position =  x_step # min(180, self.servo_x_position + x_step)
+                self.servo_x_position = - x_step # min(180, self.servo_x_position + x_step)
                 self.get_logger().info(f"Moving RIGHT by {x_step} steps")
             else:
-                self.servo_x_position = -x_step #max(0, self.servo_x_position - x_step)
+                self.servo_x_position =  x_step #max(0, self.servo_x_position - x_step)
                 self.get_logger().info(f"Moving LEFT by {x_step} steps")
         
         if abs(diff_y) > self.CENTER_THRESHOLD:
