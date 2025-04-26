@@ -67,3 +67,83 @@ Now on the first terminal you should see :
 ```
 
 it you see that message the communication is working correctly
+
+
+
+
+
+
+
+## Build the arm configuration
+To build the arm configuration run this command inside the moveit2 docker:
+
+```
+cd /shared_with_docker/ 
+colcon build --packages-select robotic_arm7
+```
+
+
+For more info about the moveit2 configuration see the file moveit2_docker/moveit2_readme.md
+
+
+
+## Run Rviz with the custom robotic arm configuration
+
+Now to run the Rviz with the custom robotic arm configuration inside the moveit2 docker:
+
+```
+
+cd /shared_with_docker/ 
+source install/setup.bash && source /opt/ros/rolling/setup.bash
+ros2 launch robotic_arm7 demo.launch.py
+
+```
+
+
+This will display the custom created arm in Rviz, you can now controll the virtual arm moving the sphere with the mouse
+For more info and if the procedure is not working see the file moveit2_docker/moveit2_readme.md
+
+
+
+
+
+## Run the serial 232 interface software (control_servos_using_esp32_moveit2.py)
+This software will receive the joint position from moveit2 using ros2 proptocol and the will ask the esp32 connected via serial port to command the servomotors
+
+
+Now open a new terminal on the moveit2 docker:
+
+I do this with this command:
+
+```
+docker exec -it $(docker ps | grep movit2_gpu_run | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
+
+```
+
+
+If you have not pyserial installed you could install it with:
+
+```
+cd /shared_with_docker/pyserial-3.5  && python3 setup.py install
+```
+
+
+
+
+Make sure to have the circuitpython software installed on the esp32 s3, look at How_to_install.MD  for more details.
+
+Make sure you have connected the esp32 to the pc before running the docker-compose run --rm moveit2 otherwise the serial port will not be available
+
+If that is the case close the docker, connect the esp32 and restart following the procedure since the start before continuing 
+ 
+ 
+Run the serial interface software with:
+```
+
+python3 control_servos_using_esp32_moveit2.py
+
+```
+
+
+
+Now you should be able to move the virtual arm with Rviz and when you press Plan and execute the real arm should move too!

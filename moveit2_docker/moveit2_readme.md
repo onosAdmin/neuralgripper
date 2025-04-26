@@ -112,7 +112,7 @@ Remember the arm package should be named with a "_moveit_config" at the end  or 
 
 
 
-If after you have configurated your custom arm and then you could not open the created config file, check the hidden file  .setup_assistant
+If after you have configurated your custom arm you could not open the created config file, check the hidden file  .setup_assistant
 you should have the correct names an paths like this:
   urdf:
     package: "robotic_arm7"
