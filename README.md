@@ -139,6 +139,7 @@ If that is the case close the docker, connect the esp32 and restart following th
  
 Run the serial interface software with:
 ```
+cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
 
 python3 control_servos_using_esp32_moveit2.py
 
@@ -149,7 +150,7 @@ python3 control_servos_using_esp32_moveit2.py
 Now you should be able to move the virtual arm with Rviz and when you press Plan and execute the real arm should move too!
 If it does not move check if the serial port name is correct and modify if needed in:
 
-python3 control_servos_using_esp32_moveit2.py
+control_servos_using_esp32_moveit2.py
 
 on the line:
 ```

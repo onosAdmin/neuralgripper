@@ -130,9 +130,20 @@ class RotatingBaseController(Node):
                 joint_constraint = JointConstraint()
                 joint_constraint.joint_name = joint_name
                 joint_constraint.position = joint_positions[joint_name]  # Current position
-                joint_constraint.tolerance_above = 0.01  # Small tolerance
-                joint_constraint.tolerance_below = 0.01
-                joint_constraint.weight = 1.0
+                
+                # Set different tolerances based on the joint
+                if joint_name in ['joint5', 'joint6']:
+                    # Stricter constraints for joint5 and joint6
+                    joint_constraint.tolerance_above = 0.001  # Very small tolerance (0.057 degrees)
+                    joint_constraint.tolerance_below = 0.001
+                    joint_constraint.weight = 2.0  # Higher weight for these joints
+                    self.get_logger().info(f"Applying STRICT constraint to {joint_name}")
+                else:
+                    # Standard constraints for other joints
+                    joint_constraint.tolerance_above = 0.01  # Small tolerance (~0.57 degrees)
+                    joint_constraint.tolerance_below = 0.01
+                    joint_constraint.weight = 1.0
+                
                 goal_constraints.joint_constraints.append(joint_constraint)
                 self.get_logger().info(f"Fixing {joint_name} at: {joint_positions[joint_name]:.4f} rad")
         

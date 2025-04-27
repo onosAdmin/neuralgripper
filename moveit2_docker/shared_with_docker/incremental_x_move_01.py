@@ -16,7 +16,7 @@ from tf2_ros import TransformException
 import numpy as np
 import sys
 
-class MoveItActionClient(Node):
+class MoveItActionzClient(Node):
     def __init__(self):
         super().__init__('moveit_action_client')
 

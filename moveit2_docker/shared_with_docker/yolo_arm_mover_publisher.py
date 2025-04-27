@@ -15,7 +15,9 @@ class ArmControlNode(Node):
         self.publisher = self.create_publisher(String, 'arm_commands', 10)
         
         # Initialize YOLO model
+        #self.model = YOLO('/shared_with_docker/weights/rock_weights_best4.pt')  
         self.model = YOLO('yolov10x.pt')
+
         
         # Initialize webcam
         self.cap = cv2.VideoCapture(0)
@@ -117,7 +119,7 @@ class ArmControlNode(Node):
                 class_id = int(box.cls)
                 class_name = self.model.names[class_id]
                 confidence = math.ceil((box.conf[0] * 100)) / 100
-                if class_id == 0 and confidence > 0.90:  # "person" with high confidence
+                if class_id == 0 and confidence > 0.60:  
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     obj_x = (x1 + x2) // 2
                     obj_y = (y1 + y2) // 2
@@ -131,7 +133,7 @@ class ArmControlNode(Node):
                         'box': (x1, y1, x2, y2),
                         'confidence': confidence
                     })
-                    return found_objects  # exit after first person
+                    return found_objects  # exit after first object is found
         
         return found_objects
 
@@ -177,7 +179,7 @@ class ArmControlNode(Node):
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         self.open_grabber()
 
-            cv2.imshow('Person Tracking', frame)
+            cv2.imshow('Object Tracking', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         

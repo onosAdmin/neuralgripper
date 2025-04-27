@@ -4,6 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import json
 from rotating_base_planning import RotatingBaseController
+from move_arm_to_radiant_position import move_arm_to_predefined_position
 import math 
 
 
@@ -60,6 +61,7 @@ class ArmControlSubscriber(Node):
                 delta_degrees_x = -3
 
             self.move_base(delta_degrees_x)
+            
 
         except json.JSONDecodeError as e:
             self.get_logger().error(f"JSON decoding error: {e}")
@@ -96,6 +98,12 @@ class ArmControlSubscriber(Node):
 
 
 def main(args=None):
+    motion_result = move_arm_to_predefined_position(position="man_scan")
+    if motion_result:
+        print("\nMotion TO START position completed successfully!")
+    else:
+        print("\nMotion TO START position failed. Please check the error messages.")
+    
     rclpy.init(args=args)
     arm_subscriber = ArmControlSubscriber()
     #controller = RotatingBaseController()
