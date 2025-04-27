@@ -13,7 +13,7 @@ a python program runnig on slave_image will receive the message from master_imag
 Once calculated the result joint motors rotations will be passed to an esp32 using serial communciation, the esp32 will then move the motors to the desired positions 
  
  
-The concept is simple:
+The concept is this:
 The robot arm will scan for an object moving the arm gripper left and right
 When a object is detected the arm will be moved left/rigt forward or backwards in order to center the object with the camera (mounted on the arm gripper) 
 once the arm gripper is in position the arm will lower it , grab the object and move it to a predefined place.
@@ -66,7 +66,7 @@ Now on the first terminal you should see :
 
 ```
 
-it you see that message the communication is working correctly
+If you see that message the communication is working correctly and you can continue with the guide.
 
 
 
@@ -116,7 +116,7 @@ Now open a new terminal on the moveit2 docker:
 I do this with this command:
 
 ```
-docker exec -it $(docker ps | grep movit2_gpu_run | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
+docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
 
 ```
 
@@ -147,3 +147,76 @@ python3 control_servos_using_esp32_moveit2.py
 
 
 Now you should be able to move the virtual arm with Rviz and when you press Plan and execute the real arm should move too!
+If it does not move check if the serial port name is correct and modify if needed in:
+
+python3 control_servos_using_esp32_moveit2.py
+
+on the line:
+```
+serial_port = '/dev/ttyACM0'
+
+```
+
+
+
+
+
+Now run the software that will receive the commands from the video detection and send them to moveit2 
+Now open a new terminal on the  running moveit2 docker:
+
+I do this with this command:
+
+```
+docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
+
+```
+
+
+
+Run the software:
+
+```
+cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
+
+python3 ros2_arm_mover_subscriber.py
+
+```
+
+
+
+
+
+
+Now to run the camera detection software in the yoloros2 docker image:
+
+Make sure the camera is connected before running  the docker image otherise stop the docker image and connect the camera
+
+
+If you have not the  yoloros2 docker image running :
+```
+
+docker-compose run --rm yoloros2
+```
+
+
+```
+
+cd /shared_with_docker/ 
+python3 yolo_arm_mover_publisher.py
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.
