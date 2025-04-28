@@ -63,6 +63,14 @@ sudo nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
 
 
 
+If you want you can download the docker image using:
+
+```
+docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
+```
+
+
+
 ## Docker build part
 
 

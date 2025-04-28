@@ -33,7 +33,7 @@ services:
   
   # YOLO Container for object detection
   yoloros2:
-    image: yoloros2/test2  # Base image with YOLO
+    image: yoloros2/test2  # Base image with YOLO   docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
     container_name: yoloros2_container
     privileged: true
     network_mode: host  # Use host network for optimal ROS 2 communication
