@@ -76,7 +76,7 @@ docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
 
 To build the docker image run:
 ```
-cd neuralgripper/opencv_gstreamer_deepstream6.4_ros2_docker/
+cd neuralgripper/opencv_gstreamer_deepstream6.4_ros2_docker/docker_build/
 docker build -t yoloros2/test2:latest .
 
 ```

@@ -25,7 +25,7 @@ services:
       - /dev:/dev
     environment:
       QT_X11_NO_MITSHM: 1
-      DISPLAY: $DISPLAY
+      DISPLAY: $DISPLAYyoloros2
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all
       ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
@@ -33,7 +33,8 @@ services:
   
   # YOLO Container for object detection
   yoloros2:
-    image: yoloros2/test2  # Base image with YOLO   docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
+    #image: yoloros2/test2  # Base image with YOLO   docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
+    image: elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
     container_name: yoloros2_container
     privileged: true
     network_mode: host  # Use host network for optimal ROS 2 communication

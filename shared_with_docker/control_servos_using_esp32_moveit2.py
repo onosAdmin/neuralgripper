@@ -6,7 +6,7 @@ from sensor_msgs.msg import JointState
 import serial
 import os
 
-serial_port = '/dev/ttyACM1'
+serial_port = '/dev/ttyACM0'
 list_of_servo_to_invert = ["joint10","joint11"]
 list_of_servo_with_270_degree = ["joint3"]
 #list_of_servo_to_invert = []
