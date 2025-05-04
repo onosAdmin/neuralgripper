@@ -153,7 +153,7 @@ class MoveArmToRadiantPosition(Node):
             goal_msg = self._create_goal_message(joint_positions, joint_names)
             
             # Set up the timeout timer
-            if attempt > 1:   # after the first 2 fail the timeout is extended
+            if attempt > 0:   # after the first  fail the timeout is extended
                 timeout_sec = max_timeout_sec
                 
             self._timeout_timer = threading.Timer(timeout_sec, self._timeout_handler)
@@ -186,7 +186,7 @@ class MoveArmToRadiantPosition(Node):
                 self.logger.warn(f"Attempt {attempt+1} failed due to goal response failure - retrying immediately")
                 # Don't increment attempt counter for immediate retry cases
                 # This means we don't count these as full attempts against our retry limit
-                time.sleep(0.5)  # Small pause to let things reset
+                time.sleep(1)  # Small pause to let things reset
             else:
                 self.logger.error(f"Attempt {attempt+1} failed after {elapsed_time:.2f} seconds")
                 # Increment attempt counter for normal failures
@@ -322,7 +322,7 @@ class MoveArmToRadiantPosition(Node):
 
 
 
-def move_arm_to_predefined_position(args=None,position="man_scan"):
+def move_arm_to_predefined_position(args=None,position="man_scan",joint_positions_list=[]):
     rclpy.init(args=args)
     
     # Create the node
@@ -334,42 +334,44 @@ def move_arm_to_predefined_position(args=None,position="man_scan"):
         for _ in range(5):
             rclpy.spin_once(arm_mover, timeout_sec=0.5)
 
+        #
+        if len (joint_positions_list) > 0:
 
-        position_dict = {
-            "small_obj_scan": 
-                # Joint positions expressed in degrees, then converted to radians
-                [
-                    degrees_to_radians(0.0),      # rotating_base
-                    degrees_to_radians(44.0),      # joint1
-                    degrees_to_radians(0.0),      # joint2
-                    degrees_to_radians(-90.0),    # joint3
-                    degrees_to_radians(0.0),      # joint4
-                    degrees_to_radians(-90.0),    # joint5
-                    degrees_to_radians(0.0)       # joint6
-                ],
-            
-            "man_scan": 
-                # Joint positions expressed in degrees, then converted to radians
-                [
-                    degrees_to_radians(0.0),      # rotating_base
-                    degrees_to_radians(32.0),      # joint1
-                    degrees_to_radians(0.0),      # joint2
-                    degrees_to_radians(-83.0),    # joint3
-                    degrees_to_radians(0.0),      # joint4
-                    degrees_to_radians(-61.0),    # joint5
-                    degrees_to_radians(0.0)       # joint6
-                ]
+            joint_positions = joint_positions_list
 
 
+        else:
 
+            position_dict = {
+                "small_obj_scan": 
+                    # Joint positions expressed in degrees, then converted to radians
+                    [
+                        degrees_to_radians(0.0),      # rotating_base
+                        degrees_to_radians(44.0),      # joint1
+                        degrees_to_radians(0.0),      # joint2
+                        degrees_to_radians(-90.0),    # joint3
+                        degrees_to_radians(0.0),      # joint4
+                        degrees_to_radians(-90.0),    # joint5
+                    ],
+                
+                "man_scan": 
+                    # Joint positions expressed in degrees, then converted to radians
+                    [
+                        degrees_to_radians(0.0),      # rotating_base
+                        degrees_to_radians(32.0),      # joint1
+                        degrees_to_radians(0.0),      # joint2
+                        degrees_to_radians(-83.0),    # joint3
+                        degrees_to_radians(0.0),      # joint4
+                        degrees_to_radians(-61.0),    # joint5
+                    ]
 
-        }
+                    }
         
-        joint_positions = position_dict[position]
+            joint_positions = position_dict[position]
 
         # Joint names
         joint_names = [
-            "rotating_base", "joint1", "joint2", "joint3", "joint4", "joint5", "joint6"
+            "rotating_base", "joint1", "joint2", "joint3", "joint4", "joint5"
         ]
 
         # Move to the specified position with retries and smart handling
@@ -393,6 +395,7 @@ def move_arm_to_predefined_position(args=None,position="man_scan"):
                 time.sleep(5.0)
             else:
                 print("\nFailed to complete motion after all global retry attempts")
+                time.sleep(1.0)
 
 
                 

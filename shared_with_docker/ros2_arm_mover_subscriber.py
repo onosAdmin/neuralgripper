@@ -5,16 +5,25 @@ from std_msgs.msg import String
 import json
 from rotating_base_planning import RotatingBaseController
 from move_arm_to_radiant_position import move_arm_to_predefined_position
+from gripper_controller import move_gripper_to_position
+
 import math 
+import time
+
+
+def degrees_to_radians(degrees):
+    """Convert degrees to radians"""
+    return degrees * (math.pi / 180.0)
+
 
 
 class ArmControlSubscriber(Node):
     def __init__(self):
-        super().__init__('arm_control_subscriber')
+        super().__init__('arm_orchestrator')
         self.subscription = self.create_subscription(
             String,
-            'arm_commands',
-            self.command_callback,
+            'yolo_data',
+            self.yolo_data_rx_callback,
             10)
         self.subscription  # prevent unused variable warning
         self.get_logger().info('Arm Control Subscriber Node has started')
@@ -34,25 +43,26 @@ class ArmControlSubscriber(Node):
         value = self.constrain(value, in_min, in_max)
         return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
-    def command_callback(self, msg):
+    def yolo_data_rx_callback(self, msg):
         """Handle incoming arm commands"""
         try:
-            command = json.loads(msg.data)
-            print(f"Received command: {command}")
+            yolo_data = json.loads(msg.data)
+            print(f"Received command: {yolo_data}")
             
-            # Process the command (here you would send to your actual hardware)
-            delta_degrees_x = command.get('x_requested_move', None)
-            delta_degrees_y = command.get('y_requested_move', None)
-            grabber_pos = command.get('grabber_requested_move', None)
+            # Process the yolo_data (here you would send to your actual hardware)
+            delta_degrees_x = yolo_data.get('x_requested_move', None)
+            delta_degrees_y = yolo_data.get('y_requested_move', None)
+            main_obj_centered = yolo_data.get('main_object_centered', None)
+            found_objects = yolo_data.get('found_objects', None)
+
             
             if delta_degrees_x is not None and delta_degrees_y is not None:
                 print(f"Moving to X: {delta_degrees_x}, Y: {delta_degrees_y}")
                 # Here you would send the actual commands to your servos
                 
-            if grabber_pos is not None and grabber_pos != "x":
-                action = "Opening" if grabber_pos > 75 else "Closing"
-                self.get_logger().info(f"{action} grabber to position: {grabber_pos}")
-                # Here you would send the grabber command to your hardware
+            #if main_obj_centered is not None and main_obj_centered != "x":
+            self.get_logger().info(f"main_obj_centered={main_obj_centered}")
+            # Here you would send the grabber command to your hardware
 
             if delta_degrees_x > 3:
                 delta_degrees_x = 3
@@ -98,15 +108,49 @@ class ArmControlSubscriber(Node):
 
 
 def main(args=None):
-    motion_result = move_arm_to_predefined_position(position="man_scan")
+
+
+
+
+    joint_positions_list = [
+        # Joint positions expressed in degrees, then converted to radians
+        
+            degrees_to_radians(0.0),      # rotating_base
+            degrees_to_radians(0.0),      # joint1
+            degrees_to_radians(0.0),      # joint2
+            degrees_to_radians(-90.0),    # joint3
+            degrees_to_radians(0.0),      # joint4
+            degrees_to_radians(-91.0),    # joint5
+        
+
+    ]
+
+    #motion_result = move_arm_to_predefined_position(position="man_scan")
+    motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+
     if motion_result:
         print("\nMotion TO START position completed successfully!")
     else:
         print("\nMotion TO START position failed. Please check the error messages.")
-    
+
+    time.sleep(1)
+
+
+    motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=30.0)
+
+    if motion_result:
+        print("\n Gripper Motion TO START position completed successfully!")
+    else:
+        print("\n Gripper Motion TO START position failed. Please check the error messages.")
+
+
+
+
+
+    time.sleep(1)
     rclpy.init(args=args)
     arm_subscriber = ArmControlSubscriber()
-    #controller = RotatingBaseController()
+    controller = RotatingBaseController()
 
     rclpy.spin(arm_subscriber)
     

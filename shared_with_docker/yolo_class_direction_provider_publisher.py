@@ -9,18 +9,22 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import json
 
-class ArmControlNode(Node):
+# This node will detect the selected class and will provide direction to center it on the webcam over ros2
+
+class ArmDirectionProvider(Node):
     def __init__(self):
-        super().__init__('arm_control_node')
-        self.publisher = self.create_publisher(String, 'arm_commands', 10)
+        super().__init__('yolo_data_node')
+        self.publisher = self.create_publisher(String, 'yolo_data', 10)
         
         # Initialize YOLO model
         #self.model = YOLO('/shared_with_docker/weights/rock_weights_best4.pt')  
-        self.model = YOLO('yolov10x.pt')
+        self.model = YOLO('best_lego_detect.pt')
 
         
         # Initialize webcam
         self.cap = cv2.VideoCapture(0)
+        self.cap.set(3, 640)
+        self.cap.set(4, 480)
         if not self.cap.isOpened():
             self.get_logger().error("Could not open webcam.")
             exit()
@@ -47,24 +51,25 @@ class ArmControlNode(Node):
     #     value = self.constrain(value, in_min, in_max)
     #     return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
-    def send_arm_command(self, x_pos, y_pos, grabber_position="x"):
+    def send_arm_direction(self, x_pos, y_pos,found_objects=[],main_object_centered=0):
         """Send properly scaled servo commands"""
-        command = {
+        yolo_data = {
             "x_requested_move": x_pos,
             "y_requested_move": y_pos,
-            "grabber_requested_move": grabber_position
+            "main_object_centered": main_object_centered,
+            "found_objects":found_objects
         }
         
         msg = String()
-        msg.data = json.dumps(command)
+        msg.data = json.dumps(yolo_data)
         self.publisher.publish(msg)
-        self.get_logger().info(f'Sent command: {msg.data}')
+        self.get_logger().info(f'Sent yolo_data: {msg.data}')
 
-    def open_grabber(self):
-        self.send_arm_command(self.servo_x_position, self.servo_y_position, 110)
+    # def open_grabber(self):
+    #     self.send_arm_direction(self.servo_x_position, self.servo_y_position, 110,found_objects)
 
-    def close_grabber(self):
-        self.send_arm_command(self.servo_x_position, self.servo_y_position, 40)
+    # def close_grabber(self):
+    #     self.send_arm_direction(self.servo_x_position, self.servo_y_position, 40,found_objects)
 
     def draw_cross(self, frame):
         """Draw a red cross dividing the frame into 4 equal parts"""
@@ -81,7 +86,7 @@ class ArmControlNode(Node):
         normalized_distance = abs(distance) / (frame_size / 2)
         return int(normalized_distance * self.MAX_SERVO_STEP)
 
-    def move_arm(self, diff_x, diff_y, frame_width, frame_height):
+    def move_arm(self, diff_x, diff_y, frame_width, frame_height,found_objects,main_object_centered):
         """Move arm proportionally based on distance from center"""
         x_step = self.calculate_proportional_step(diff_x, frame_width)
         y_step = self.calculate_proportional_step(diff_y, frame_height)
@@ -103,7 +108,7 @@ class ArmControlNode(Node):
                 self.get_logger().info(f"Moving DOWN by {y_step} steps")
         
         self.get_logger().info(f"New servo positions - X: {self.servo_x_position}, Y: {self.servo_y_position}")
-        self.send_arm_command(self.servo_x_position, self.servo_y_position)
+        self.send_arm_direction(self.servo_x_position, self.servo_y_position,found_objects=found_objects,main_object_centered=main_object_centered)
         
         self.last_move_time = time.time()
         self.processing_allowed = False
@@ -119,7 +124,8 @@ class ArmControlNode(Node):
                 class_id = int(box.cls)
                 class_name = self.model.names[class_id]
                 confidence = math.ceil((box.conf[0] * 100)) / 100
-                if class_id == 0 and confidence > 0.60:  
+                #if class_id == 0 and confidence > 0.60:  
+                if confidence > 0.75: 
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     obj_x = (x1 + x2) // 2
                     obj_y = (y1 + y2) // 2
@@ -152,8 +158,9 @@ class ArmControlNode(Node):
             center_x, center_y = self.draw_cross(frame)
             height, width = frame.shape[:2]
             
-            if self.processing_allowed:
+            if self.processing_allowed:  #todo find a way to handle multiple object detections
                 found_objects = self.process_frame(frame, center_x, center_y)
+                main_object_centered = 0
                 
                 if found_objects:
                     obj = max(found_objects, key=lambda x: x['confidence'])
@@ -167,17 +174,25 @@ class ArmControlNode(Node):
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                     
                     if abs(obj['diff_x']) > self.CENTER_THRESHOLD:
-                        self.move_arm(obj['diff_x'], obj['diff_y'], width, height)
-                        self.close_grabber()
+                        self.move_arm(obj['diff_x'], obj['diff_y'], width, height,found_objects,main_object_centered)
+                        cv2.putText(frame, "<---", (center_x - 60, center_y - 30), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) 
+
+                        #self.close_grabber()
 
                     elif abs(obj['diff_y']) > self.CENTER_THRESHOLD:
-                        self.move_arm(obj['diff_x'], obj['diff_y'], width, height)
-                        self.close_grabber()
+                        self.move_arm(obj['diff_x'], obj['diff_y'], width, height,found_objects,main_object_centered)
+                        cv2.putText(frame, "--->", (center_x - 60, center_y - 30), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)                        
+                        #self.close_grabber()
 
                     else:
                         cv2.putText(frame, "CENTERED", (center_x - 60, center_y - 30), 
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        self.open_grabber()
+                        #self.open_grabber()
+                        main_object_centered = 1
+                        self.move_arm(obj['diff_x'], obj['diff_y'], width, height,found_objects,main_object_centered)
+
 
             cv2.imshow('Object Tracking', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -188,9 +203,9 @@ class ArmControlNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    arm_control = ArmControlNode()
-    arm_control.run()
-    arm_control.destroy_node()
+    arm_direction_provider = ArmDirectionProvider()
+    arm_direction_provider.run()
+    arm_direction_provider.destroy_node()
     rclpy.shutdown()
 
 if __name__ == "__main__":

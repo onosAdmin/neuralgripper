@@ -35,6 +35,7 @@ class JointStateListener(Node):
     def joint_state_callback(self, msg):
         """Callback function to process joint state messages."""
         joint_list = ['x','x','x','x','x','x','x','x']
+        #print(str(msg.name))
         for i in range(len(msg.name)):
             if msg.name[i] ==  "rotating_base":
                 joint_list[0] = {"rotating_base":msg.position[i]}
@@ -56,9 +57,11 @@ class JointStateListener(Node):
 
             elif msg.name[i] ==  "joint6":
                 joint_list[6] = {"joint6":msg.position[i]}
+                print(f"joint6:{msg.position[i]}")
 
             elif msg.name[i] ==  "clamp_moving_joint":
                 joint_list[7] = {"clamp_moving_joint":msg.position[i]}
+                print(f"clamp_moving_joint:{msg.position[i]}")
 
                 
         command = ""
@@ -103,6 +106,7 @@ def main(args=None):
     rclpy.init(args=args)
     joint_state_listener = JointStateListener()
     try:
+        print("Script is waiting for a ros2 message, bring up  moiveit2")
         rclpy.spin(joint_state_listener)
     except KeyboardInterrupt:
         pass

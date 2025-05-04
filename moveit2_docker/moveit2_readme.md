@@ -333,6 +333,32 @@ Remember to always compile again after a change!!!
 
 
 
+
+
+If you have this  error:
+ - XacroException: No such file or directory: /shared_with_docker/install/robotic_arm7/share/robotic_arm7//shared_with_docker/moveit_arm07/robotic_arm7.urdf [Errno 2] No such file or directory: '/shared_with_docker/install/robotic_arm7/share/robotic_arm7//shared_with_docker/moveit_arm07/robotic_arm7.urdf'
+ - InvalidFrontendLaunchFileError: The launch file may have a syntax error, or its format is unknown
+
+
+You should look at 
+config/robotic_arm.urdf.xacro
+
+I modified this:
+    <xacro:include filename="$(find robotic_arm7)//shared_with_docker/moveit_arm07/robotic_arm7.urdf" />
+
+in  this
+    <xacro:include filename="/shared_with_docker/moveit_arm07/robotic_arm7.urdf" />
+
+
+
+then rebuild with:
+colcon build --packages-select robotic_arm7  && source install/setup.bash
+
+
+
+
+
+
 While on a terminal you have running ros2 launch robotic_arm7 demo.launch.py
 
 Open a second terminal  inside the docker:
