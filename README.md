@@ -124,7 +124,7 @@ docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && s
 If you have not pyserial installed you could install it with:
 
 ```
-cd /shared_with_docker/pyserial-3.5  && python3 setup.py install
+cd /shared_with_docker/pyserial-3.5  && python3 setup.py install && cd /shared_with_docker/
 ```
 
 

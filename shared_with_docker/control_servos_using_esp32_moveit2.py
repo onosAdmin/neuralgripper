@@ -59,9 +59,9 @@ class JointStateListener(Node):
                 joint_list[6] = {"joint6":msg.position[i]}
                 print(f"joint6:{msg.position[i]}")
 
-            elif msg.name[i] ==  "clamp_moving_joint":
-                joint_list[7] = {"clamp_moving_joint":msg.position[i]}
-                print(f"clamp_moving_joint:{msg.position[i]}")
+            # elif msg.name[i] ==  "clamp_moving_joint":    #todo decomment this block after fixing the problem
+            #     joint_list[7] = {"clamp_moving_joint":msg.position[i]}
+            #     print(f"clamp_moving_joint:{msg.position[i]}")
 
                 
         command = ""

@@ -16,7 +16,7 @@ from tf2_ros import TransformException
 import numpy as np
 import sys
 
-class MoveItActionzClient(Node):
+class MoveItActionClient(Node):
     def __init__(self):
         super().__init__('moveit_action_client')
 
@@ -224,9 +224,9 @@ def main(args=None):
         
         # Parameters for incremental movement
         axis = 'x'  # We're moving along the X-axis
-        step_size = float(input(f"Enter step size for {axis}-axis (e.g., 0.001): "))
-        num_steps = int(input("Enter number of steps to perform: "))
-        sleep_time = float(input("Enter sleep time between moves (seconds): "))
+        step_size = -0.001 #float(input(f"Enter step size for {axis}-axis (e.g., 0.001): "))
+        num_steps = 5 #int(input("Enter number of steps to perform: "))
+        sleep_time = 0.1 #float(input("Enter sleep time between moves (seconds): "))
         
         print(f"\nStarting incremental movement on {axis}-axis")
         print(f"Initial position: X={position['x']:.6f}, Y={position['y']:.6f}, Z={position['z']:.6f}")
