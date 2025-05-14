@@ -45,6 +45,7 @@ python3 ros2_rx_test.py
 In the other run this:
 
 ```
+cd opencv_gstreamer_deepstream6.4_ros2_docker
 docker-compose run --rm yoloros2
 
 cd /shared_with_docker
@@ -93,8 +94,7 @@ Now to run the Rviz with the custom robotic arm configuration inside the moveit2
 
 ```
 
-cd /shared_with_docker/ 
-source install/setup.bash && source /opt/ros/rolling/setup.bash
+cd /shared_with_docker/ && source install/setup.bash && source /opt/ros/rolling/setup.bash
 ros2 launch robotic_arm7 demo.launch.py
 
 ```
@@ -195,7 +195,7 @@ Make sure the camera is connected before running  the docker image otherise stop
 
 If you have not the  yoloros2 docker image running :
 ```
-
+cd opencv_gstreamer_deepstream6.4_ros2_docker
 docker-compose run --rm yoloros2
 ```
 
@@ -203,7 +203,7 @@ docker-compose run --rm yoloros2
 ```
 
 cd /shared_with_docker/ 
-python3 yolo_arm_mover_publisher.py
+python3 yolo_class_direction_provider_publisher.py
 
 ```
 

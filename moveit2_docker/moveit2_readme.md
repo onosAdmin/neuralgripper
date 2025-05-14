@@ -441,6 +441,9 @@ moveit2 test in c++
 https://automaticaddison.com/how-to-create-your-first-c-moveit-2-project/
 
 
+moveit2 object pickup:
+https://moveit.picknik.ai/humble/doc/examples/move_group_interface/move_group_interface_tutorial.html
+
 latest_test:
 https://www.youtube.com/watch?v=c6Bxbq8UdaI
 https://moveit.picknik.ai/humble/doc/tutorials/getting_started/getting_started.html

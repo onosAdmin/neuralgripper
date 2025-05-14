@@ -119,11 +119,11 @@ def main(args=None):
         # Joint positions expressed in degrees, then converted to radians
         
             degrees_to_radians(0.0),      # rotating_base
-            degrees_to_radians(0.0),      # joint1
+            degrees_to_radians(-25.0),      # joint1
             degrees_to_radians(0.0),      # joint2
-            degrees_to_radians(-90.0),    # joint3
+            degrees_to_radians(-71.0),    # joint3
             degrees_to_radians(0.0),      # joint4
-            degrees_to_radians(-91.0),    # joint5
+            degrees_to_radians(-81.0),    # joint5
         
 
     ]
