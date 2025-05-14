@@ -15,6 +15,25 @@
 #include <stdexcept> // Required for stod exceptions
 
 
+
+/*
+make a moveit2 c++ code  where there is a class that given a axis (x, y or z) and a step move in mm 
+it will read the current joint position and  move the end effector in the axis requested by the step mm  given, keeping the current end effector pose
+
+To run use:
+ros2 run axis_mover01 axis_mover0.1 x 3
+ros2 run axis_mover01 axis_mover0.1 x -2
+
+ros2 run axis_mover01 axis_mover0.1 y 2
+ros2 run axis_mover01 axis_mover0.1 y -2
+
+ros2 run axis_mover01 axis_mover0.1 z 2
+ros2 run axis_mover01 axis_mover0.1 z -2
+
+*/
+
+
+
 class AxisMover {
 public:
     AxisMover(const rclcpp::Node::SharedPtr& node)
