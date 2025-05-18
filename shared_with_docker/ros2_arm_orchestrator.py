@@ -20,16 +20,16 @@ def degrees_to_radians(degrees):
 
 
 
-class ArmControlSubscriber(Node):
+class YoloDataSubscriber(Node):
     def __init__(self):
-        super().__init__('arm_orchestrator')
+        super().__init__('yolo_data_subscriber')
         self.subscription = self.create_subscription(
             String,
             'yolo_data',
             self.yolo_data_rx_callback,
             10)
         self.subscription  # prevent unused variable warning
-        self.get_logger().info('Arm Control Subscriber Node has started')
+        self.get_logger().info('Yolo Data Subscriber Node has started')
 
         self.controller = RotatingBaseController()
 
@@ -47,33 +47,33 @@ class ArmControlSubscriber(Node):
         return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
     def yolo_data_rx_callback(self, msg):
-        """Handle incoming arm commands"""
+        """Handle incoming yolo_data"""
         try:
             yolo_data = json.loads(msg.data)
             print(f"Received command: {yolo_data}")
             
             # Process the yolo_data (here you would send to your actual hardware)
-            delta_degrees_x = yolo_data.get('x_requested_move', None)
-            delta_degrees_y = yolo_data.get('y_requested_move', None)
+            delta_x = yolo_data.get('x_requested_move', None)
+            delta_y = yolo_data.get('y_requested_move', None)
             main_obj_centered = yolo_data.get('main_object_centered', None)
             found_objects = yolo_data.get('found_objects', None)
 
             
-            if delta_degrees_x is not None and delta_degrees_y is not None:
-                print(f"Moving to X: {delta_degrees_x}, Y: {delta_degrees_y}")
+            if delta_x is not None and delta_y is not None:
+                print(f"Moving to X: {delta_x}, Y: {delta_y}")
                 # Here you would send the actual commands to your servos
                 
             #if main_obj_centered is not None and main_obj_centered != "x":
             self.get_logger().info(f"main_obj_centered={main_obj_centered}")
             # Here you would send the grabber command to your hardware
 
-            if delta_degrees_x > 3:
-                delta_degrees_x = 3
+            if delta_x > 3:
+                delta_x = 3
 
-            if delta_degrees_x < -3:
-                delta_degrees_x = -3
+            if delta_x < -3:
+                delta_x = -3
 
-            self.move_base(delta_degrees_x)
+            self.move_base(delta_x)
             
 
         except json.JSONDecodeError as e:
@@ -119,11 +119,11 @@ def main(args=None):
         # Joint positions expressed in degrees, then converted to radians
         
             degrees_to_radians(0.0),      # rotating_base
-            degrees_to_radians(-25.0),      # joint1
+            degrees_to_radians(4.0),      # joint1
             degrees_to_radians(0.0),      # joint2
-            degrees_to_radians(-71.0),    # joint3
+            degrees_to_radians(-90.0),    # joint3
             degrees_to_radians(0.0),      # joint4
-            degrees_to_radians(-81.0),    # joint5
+            degrees_to_radians(-76.0),    # joint5
         
 
     ]
@@ -164,12 +164,12 @@ def main(args=None):
 
     time.sleep(1)
     rclpy.init(args=args)
-    arm_subscriber = ArmControlSubscriber()
+    yolo_data_subscriber = YoloDataSubscriber()
     controller = RotatingBaseController()
 
-    rclpy.spin(arm_subscriber)
+    rclpy.spin(yolo_data_subscriber)
     
-    arm_subscriber.destroy_node()
+    yolo_data_subscriber.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

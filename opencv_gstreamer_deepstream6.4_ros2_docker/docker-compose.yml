@@ -51,9 +51,9 @@ services:
       - ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
       - ./yolo_ws:/yolo_ws  # Mount your YOLO workspace
       - ../shared_with_docker:/shared_with_docker  # Share data with MoveIt2
-      - /dev/video0:/dev/video0  # Camera access (adjust device as needed)
+      - /dev/video1:/dev/video0  # Camera access (adjust device as needed)
     devices:
-      - /dev/video0:/dev/video0  # Camera device pass-through
+      - /dev/video1:/dev/video0  # Camera device pass-through
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
