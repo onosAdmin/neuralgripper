@@ -15,7 +15,11 @@ import json
 class ArmDirectionProvider(Node):
     def __init__(self):
         super().__init__('yolo_data_node')
+        String.__import_type_support__()
         self.publisher = self.create_publisher(String, 'yolo_data', 10)
+
+
+
 
         # Initialize YOLO model
         #self.model = YOLO('/shared_with_docker/weights/rock_weights_best4.pt')
@@ -58,14 +62,19 @@ class ArmDirectionProvider(Node):
 
         self.get_logger().info('Arm Control Node has been started')
 
-    def send_arm_direction(self, x_request, y_request, found_objects=[], main_object_centered=0):
+    def send_arm_direction(self, x_request, y_request, best_current_obj,found_objects, main_object_centered):
         """Send properly scaled servo command requests"""
+        
+
         yolo_data = {
             "x_requested_move": x_request,
             "y_requested_move": y_request,
+            "found_objects": str(found_objects), # Send info about all found objects in the last processed frame
             "main_object_centered": main_object_centered,
-            "found_objects": found_objects # Send info about all found objects in the last processed frame
+            "main_target_object": str(best_current_obj)
         }
+
+    
 
         msg = String()
         msg.data = json.dumps(yolo_data)
@@ -90,7 +99,7 @@ class ArmDirectionProvider(Node):
         proportional_step = int(normalized_distance * self.MAX_SERVO_STEP)
         return max(base_step, proportional_step) # Ensure at least base_step
 
-    def move_arm(self, diff_x, diff_y, frame_width, frame_height, found_objects, main_object_centered):
+    def move_arm(self, diff_x, diff_y, frame_width, frame_height,best_current_obj,found_objects, main_object_centered):
         """Calculate and send proportional movement requests based on distance from center"""
 
         x_step = 0
@@ -122,7 +131,7 @@ class ArmDirectionProvider(Node):
         # Only send command if a move is actually requested OR if it just became centered
         if self.servo_x_request != 0 or self.servo_y_request != 0 or main_object_centered == 1:
             self.get_logger().info(f"Requested servo movements - X: {self.servo_x_request}, Y: {self.servo_y_request}")
-            self.send_arm_direction(self.servo_x_request, self.servo_y_request, found_objects=found_objects, main_object_centered=main_object_centered)
+            self.send_arm_direction(self.servo_x_request, self.servo_y_request,best_current_obj, 0, main_object_centered)
 
             # Reset delay and state after sending a command based on stable detection
             self.last_move_time = time.time()
@@ -168,7 +177,32 @@ class ArmDirectionProvider(Node):
         # Return ALL found objects meeting the criteria
         return found_objects
 
+
+
+
+
+
+
+
+
+
+# Inside the ArmDirectionProvider class, within the run method:
+
     def run(self):
+        # Add state variables (already done in the previous modification)
+        self.sequential_count = 0
+        self.last_detection_info = None # Stores {'class': name, 'x': x, 'y': y} of the object from the *previous* frame's best detection
+        self.LOCATION_SIMILARITY_THRESHOLD = 60 # Pixels difference allowed for location
+
+        # Get the name for class ID 0
+        try:
+            self.target_class_name = 'brick_2x4' #self.model.names[0]
+            self.get_logger().info(f"Target tracking class name: {self.target_class_name} (ID 0)")
+        except (IndexError, KeyError):
+             self.target_class_name = None
+             self.get_logger().warning("Model does not have a class with ID 0. Prioritization of class 0 will not be possible.")
+
+
         while rclpy.ok():
             current_time = time.time()
 
@@ -191,86 +225,115 @@ class ArmDirectionProvider(Node):
 
             best_current_obj = None
             if all_found_objects:
-                 # In case of multiple detections, focus on the one with the highest confidence
-                 best_current_obj = max(all_found_objects, key=lambda x: x['confidence'])
-                 x1, y1, x2, y2 = best_current_obj['box']
-                 # Draw bounding box and info for the best detected object
-                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                 cv2.circle(frame, (best_current_obj['x'], best_current_obj['y']), 5, (0, 255, 0), -1)
-                 cv2.putText(frame, f"{best_current_obj['class']} ({best_current_obj['confidence']:.2f})",
-                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                 cv2.putText(frame, f"Diff X: {best_current_obj['diff_x']} Diff Y: {best_current_obj['diff_y']}",
-                            (best_current_obj['x'] + 10, best_current_obj['y'] - 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                # --- Logic to prioritize class 0 ---
+                target_class_objects = []
+                # Check if target class name was successfully identified and if any objects of that class were found
+                if self.target_class_name is not None:
+                     target_class_objects = [obj for obj in all_found_objects if obj['class'] == self.target_class_name]
 
-
-            # --- Sequential Detection Logic ---
-            if best_current_obj:
-                # Check if this detection is similar (same class, similar location) to the last one
-                is_similar_to_last = False
-                if self.last_detection_info:
-                    # Check class name
-                    class_matches = (best_current_obj['class'] == self.last_detection_info['class'])
-                    # Check location similarity
-                    loc_diff_x = abs(best_current_obj['x'] - self.last_detection_info['x'])
-                    loc_diff_y = abs(best_current_obj['y'] - self.last_detection_info['y'])
-                    location_is_similar = (loc_diff_x <= self.LOCATION_SIMILARITY_THRESHOLD and
-                                           loc_diff_y <= self.LOCATION_SIMILARITY_THRESHOLD)
-
-                    if class_matches and location_is_similar:
-                        is_similar_to_last = True
-
-                if is_similar_to_last:
-                    self.sequential_count += 1
-                    self.get_logger().info(f"Sequential count: {self.sequential_count}")
+                if target_class_objects:
+                    # If target class objects are found, find the best among them (highest confidence)
+                    best_current_obj = max(target_class_objects, key=lambda x: x['confidence'])
+                    self.get_logger().debug(f"Prioritizing best '{self.target_class_name}' object.")
                 else:
-                    # New object, different class, or location changed significantly, OR first detection
-                    self.sequential_count = 1
-                    self.get_logger().info(f"Reset sequential count to 1 (New/Different object detected)")
-
-                # Store current best detection info for the next frame's comparison
-                self.last_detection_info = {
-                    'class': best_current_obj['class'],
-                    'x': best_current_obj['x'],
-                    'y': best_current_obj['y']
-                }
-
-                # --- Act if sequential count reaches  AND processing is allowed by delay ---
-                if self.sequential_count >= 5 and self.processing_allowed_by_delay:
-                    # Object is considered stable over 5 frames in a similar location
-                    diff_x = best_current_obj['diff_x']
-                    diff_y = best_current_obj['diff_y']
-
-                    main_object_centered = 0
-                    self.sequential_count = 0
-                    if abs(diff_x) <= self.CENTER_THRESHOLD and abs(diff_y) <= self.CENTER_THRESHOLD:
-                         main_object_centered = 1
-                         cv2.putText(frame, "CENTERED", (center_x - 60, center_y - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                         # If centered, we still call move_arm to potentially send main_object_centered=1
-                         # even if requests are 0, or if minor adjustments are needed within threshold logic.
-                         #self.move_arm(diff_x, diff_y, width, height, all_found_objects, main_object_centered)
+                    # If no target class objects (or target_class_name is None), find the best among ALL objects
+                    best_current_obj = max(all_found_objects, key=lambda x: x['confidence'])
+                    if self.target_class_name is not None:
+                         self.get_logger().debug(f"No '{self.target_class_name}' objects found, using best overall object.")
                     else:
-                         # Indicate direction if not centered
-                         direction_text = ""
-                         if abs(diff_x) > self.CENTER_THRESHOLD:
-                             direction_text += "LEFT" if diff_x < 0 else "RIGHT"
-                             if abs(diff_y) > self.CENTER_THRESHOLD:
-                                 direction_text += "/"
-                         if abs(diff_y) > self.CENTER_THRESHOLD:
-                              # diff_y positive means object is below center (assuming top-left origin)
-                              direction_text += "DOWN" if diff_y > 0 else "UP"
-                         cv2.putText(frame, direction_text, (center_x - 60, center_y -10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                         self.move_arm(diff_x, diff_y, width, height, all_found_objects, main_object_centered)
+                         self.get_logger().debug("Target class name not available, using best overall object.")
+                # --- End priority logic ---
+
+                for obj in all_found_objects:
+                    x1, y1, x2, y2 = obj['box']
+                    # Draw bounding box and info for the best detected object
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.circle(frame, (obj['x'], obj['y']), 5, (0, 255, 0), -1)
+                    cv2.putText(frame, f"{obj['class']} ({obj['confidence']:.2f})",
+                                (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                    cv2.putText(frame, f"Diff X: {obj['diff_x']} Diff Y: {obj['diff_y']}",
+                                (obj['x'] + 10, obj['y'] - 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
 
-                elif self.sequential_count < 5:
-                    # Object detected, but not yet stable for 5 frames
-                    # Display progress
-                    cv2.putText(frame, f"Stabilizing ({self.sequential_count}/5)",
-                                (center_x - 120, center_y - 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2) # Orange color
+                x1, y1, x2, y2 = best_current_obj['box']
+                # Draw bounding box and info for the best detected object
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
+                cv2.circle(frame, (best_current_obj['x'], best_current_obj['y']), 5, (255, 0, 0), -1)
+                cv2.putText(frame, f"{best_current_obj['class']} ({best_current_obj['confidence']:.2f})",
+                        (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+                cv2.putText(frame, f"Diff X: {best_current_obj['diff_x']} Diff Y: {best_current_obj['diff_y']}",
+                        (best_current_obj['x'] + 10, best_current_obj['y'] - 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+
+
+                # --- Sequential Detection Logic (This part remains the same from the previous modification) ---
+                if best_current_obj:
+                    # Check if this detection is similar (same class, similar location) to the last one
+                    is_similar_to_last = False
+                    if self.last_detection_info:
+                        # Check class name
+                        class_matches = (best_current_obj['class'] == self.last_detection_info['class'])
+                        # Check location similarity
+                        loc_diff_x = abs(best_current_obj['x'] - self.last_detection_info['x'])
+                        loc_diff_y = abs(best_current_obj['y'] - self.last_detection_info['y'])
+                        location_is_similar = (loc_diff_x <= self.LOCATION_SIMILARITY_THRESHOLD and
+                                            loc_diff_y <= self.LOCATION_SIMILARITY_THRESHOLD)
+
+                        if class_matches and location_is_similar:
+                            is_similar_to_last = True
+
+                    if is_similar_to_last:
+                        self.sequential_count += 1
+                        self.get_logger().info(f"Sequential count: {self.sequential_count}")
+                    else:
+                        # New object, different class, or location changed significantly, OR first detection
+                        self.sequential_count = 1
+                        self.get_logger().info(f"Reset sequential count to 1 (New/Different object detected)")
+
+                    # Store current best detection info for the next frame's comparison
+                    self.last_detection_info = {
+                        'class': best_current_obj['class'],
+                        'x': best_current_obj['x'],
+                        'y': best_current_obj['y']
+                    }
+
+                    # --- Act if sequential count reaches 3 AND processing is allowed by delay ---
+                    if self.sequential_count >= 3 and self.processing_allowed_by_delay:
+                        # Object is considered stable over 3 frames in a similar location
+                        diff_x = best_current_obj['diff_x']
+                        diff_y = best_current_obj['diff_y']
+
+                        main_object_centered = 0
+                        if abs(diff_x) <= self.CENTER_THRESHOLD and abs(diff_y) <= self.CENTER_THRESHOLD:
+                            main_object_centered = 1
+                            cv2.putText(frame, "CENTERED", (center_x - 60, center_y - 30),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            # If centered, we still call move_arm to potentially send main_object_centered=1
+                            # even if requests are 0, or if minor adjustments are needed within threshold logic.
+                            self.move_arm(diff_x, diff_y, width, height,best_current_obj, all_found_objects, main_object_centered)
+                        else:
+                            # Indicate direction if not centered
+                            direction_text = ""
+                            if abs(diff_x) > self.CENTER_THRESHOLD:
+                                direction_text += "LEFT" if diff_x < 0 else "RIGHT"
+                                if abs(diff_y) > self.CENTER_THRESHOLD:
+                                    direction_text += "/"
+                            if abs(diff_y) > self.CENTER_THRESHOLD:
+                                # diff_y positive means object is below center (assuming top-left origin)
+                                direction_text += "DOWN" if diff_y > 0 else "UP"
+                            cv2.putText(frame, direction_text, (center_x - 60, center_y - 30),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            self.move_arm(diff_x, diff_y, width, height,best_current_obj, all_found_objects, main_object_centered)
+
+
+                    elif self.sequential_count < 3:
+                        # Object detected, but not yet stable for 3 frames
+                        # Display progress
+                        cv2.putText(frame, f"Stabilizing ({self.sequential_count}/3)",
+                                    (center_x - 120, center_y - 30),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2) # Orange color
 
 
             else: # No objects detected in the current frame meeting confidence threshold
@@ -280,6 +343,10 @@ class ArmDirectionProvider(Node):
                  # Display searching status
                  cv2.putText(frame, "Searching...", (center_x - 60, center_y - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2) # Yellow color
+                 #self.move_arm(0, 0, width, height,best_current_obj, all_found_objects, 0)
+                 best_current_obj = None
+                 self.send_arm_direction(0, 0, 0, all_found_objects, 0)  #no object detected
+
 
             # Display stabilization delay status
             if not self.processing_allowed_by_delay:
@@ -297,6 +364,10 @@ class ArmDirectionProvider(Node):
         self.cap.release()
         cv2.destroyAllWindows()
         self.get_logger().info("Webcam released and windows closed.")
+
+
+
+
 
 
 def main(args=None):

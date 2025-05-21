@@ -12,7 +12,7 @@ Build the package:
 
 ```
 
-/shared_with_docker# colcon build --packages-select hello_moveit01
+cd /shared_with_docker/  && colcon build --packages-select hello_moveit01
 ```
 
 
@@ -21,7 +21,7 @@ Source the package:
 
 ```
 
-/shared_with_docker# cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
+cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
 ```
 
 
@@ -30,7 +30,7 @@ Run the package:
 
 ```
 
-/shared_with_docker# ros2 run hello_moveit01 hello_moveit_v0.1
+cd /shared_with_docker/  && ros2 run hello_moveit01 hello_moveit_v0.1
 ```
 
 

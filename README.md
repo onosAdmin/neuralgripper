@@ -32,6 +32,7 @@ once the arm gripper is in position the arm will lower it , grab the object and 
 Open 2 terminals on one run this:
 
 ```
+xhost +local:docker
 docker-compose run --rm moveit2
 
 cd /shared_with_docker
@@ -214,8 +215,13 @@ python3 yolo_class_direction_provider_publisher.py
 
 
 
+## Error no gui inside docker container 
+If for some reason you cannot see any gui inside any of the docker container (for example running ros2 launch robotic_arm7 demo.launch.py) 
+then try to run this command before running the docker container again:
 
-
+```
+xhost +local:docker
+```
 
 
 

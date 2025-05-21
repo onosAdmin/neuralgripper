@@ -52,13 +52,21 @@ class YoloDataSubscriber(Node):
             yolo_data = json.loads(msg.data)
             print(f"Received command: {yolo_data}")
             
+
+
             # Process the yolo_data (here you would send to your actual hardware)
             delta_x = yolo_data.get('x_requested_move', None)
             delta_y = yolo_data.get('y_requested_move', None)
-            main_obj_centered = yolo_data.get('main_object_centered', None)
             found_objects = yolo_data.get('found_objects', None)
+            main_obj_centered = yolo_data.get('main_object_centered', None)
+            main_target_object = yolo_data.get('main_target_object', None)
 
-            
+            if len( found_objects) == 0:
+                print("No objects found")
+                return
+                
+
+
             if delta_x is not None and delta_y is not None:
                 print(f"Moving to X: {delta_x}, Y: {delta_y}")
                 # Here you would send the actual commands to your servos
@@ -73,7 +81,17 @@ class YoloDataSubscriber(Node):
             if delta_x < -3:
                 delta_x = -3
 
+
+
+
+            if delta_y > 0:
+                delta_y = 10
+
+            if delta_y < 0:
+                delta_y = -10
+
             self.move_base(delta_x)
+            os.system("ros2 run axis_mover01 axis_mover0.1 y "+str(-delta_y))
             
 
         except json.JSONDecodeError as e:

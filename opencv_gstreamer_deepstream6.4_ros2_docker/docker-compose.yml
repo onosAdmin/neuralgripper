@@ -1,5 +1,9 @@
-#docker-compose run --rm moveit2
-#docker-compose run --rm yoloros2
+
+
+# Define a user-defined bridge network
+networks:
+  my_ros_network:
+    driver: bridge
 
 services:
   moveit2:
@@ -7,8 +11,12 @@ services:
     image: moveit/moveit2:main-rolling-tutorial-source
     container_name: moveit2_container
     privileged: true
-    network_mode: host
-    command: /bin/bash
+    # Use the user-defined network instead of host network
+    # network_mode: host # Removed
+    networks:
+      - my_ros_network
+    command: tail -f /dev/null  # This will keep the container running indefinitely
+     #command: sh -c "python3 /shared_with_docker/socket_server.py" # <--- This is key for the server
     deploy:
       resources:
         reservations:
@@ -30,13 +38,16 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
       CYCLONEDDS_URI: file:///cyclonedds.xml
-  
+
   # YOLO Container for object detection
   yoloros2:
-    image: yoloros2/test2  # Base image with YOLO   docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
+    image: yoloros2/test2  # Base image with YOLO     docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
     container_name: yoloros2_container
     privileged: true
-    network_mode: host  # Use host network for optimal ROS 2 communication
+    # Use the user-defined network instead of host network
+    # network_mode: host # Removed
+    networks:
+      - my_ros_network
     command: /bin/bash
     deploy:
       resources:
@@ -51,9 +62,9 @@ services:
       - ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
       - ./yolo_ws:/yolo_ws  # Mount your YOLO workspace
       - ../shared_with_docker:/shared_with_docker  # Share data with MoveIt2
-      - /dev/video1:/dev/video0  # Camera access (adjust device as needed)
+      - /dev/video0:/dev/video0  # Camera access (adjust device as needed)
     devices:
-      - /dev/video1:/dev/video0  # Camera device pass-through
+      - /dev/video0:/dev/video0  # Camera device pass-through
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
@@ -61,5 +72,4 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
       CYCLONEDDS_URI: file:///cyclonedds.xml
-      
-      
+
