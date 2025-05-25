@@ -10,16 +10,24 @@ from gripper_controller import move_gripper_to_position
 import math
 import time
 import os
+import sys
 import socket
 import threading
-import queue
+#import queue
 
 serial_port = '/dev/ttyACM0'
 
 # --- Socket Server Configuration ---
 HOST = '0.0.0.0'
 PORT = 65432
+
 # --- End Socket Server Configuration ---
+
+
+
+MOVEIT_SERVER_HOST = "127.0.0.1"
+MOVEIT_SERVER_PORT = 8080
+
 
 def degrees_to_radians(degrees):
     """Convert degrees to radians"""
@@ -47,16 +55,57 @@ class ros2ArmOrchestrator(Node):
         self.client_thread.start()
         # --- End Socket Server Initialization ---
 
+
+        # --- MoveIt Socket Client ---
+        self.moveit_socket = None
+        # --- End MoveIt Socket Client ---
+
+
         # --- Message Queue and OS System Status ---
-        self.message_queue = queue.Queue(maxsize=1) # Queue of size 1
+        #self.message_queue = queue.Queue(maxsize=1) # Queue of size 1
         self.arm_moving_event = threading.Event() # Event to signal os.system() execution
-        self.processing_thread = None # To hold the reference to the processing thread
-        self.processing_thread_active = threading.Event() # Event to signal if processing thread is active
+        # self.processing_thread = None # To hold the reference to the processing thread
+        # self.processing_thread_active = threading.Event() # Event to signal if processing thread is active
         # --- End Message Queue and OS System Status ---
 
         # Latest message storage
         self.latest_msg_data = None
         self.latest_msg_lock = threading.Lock()
+
+
+    def connect_to_moveit_server(self):
+        """Establish connection to the MoveIt socket server"""
+        try:
+            if self.moveit_socket:
+                self.moveit_socket.close()
+            
+            self.moveit_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.moveit_socket.connect((MOVEIT_SERVER_HOST, MOVEIT_SERVER_PORT))
+            self.get_logger().info(f"Connected to MoveIt server at {MOVEIT_SERVER_HOST}:{MOVEIT_SERVER_PORT}")
+            return True
+        except Exception as e:
+            self.get_logger().error(f"Failed to connect to MoveIt server: {e}")
+            return False
+
+
+    def send_moveit_command(self, command):
+        """Send a command to the MoveIt server and get response"""
+        try:
+            if not self.moveit_socket:
+                if not self.connect_to_moveit_server():
+                    return None
+
+            # Send command
+            self.moveit_socket.sendall((command + "\n").encode('utf-8'))
+            
+            # Receive response
+            response = self.moveit_socket.recv(1024).decode('utf-8').strip()
+            return response
+        except Exception as e:
+            self.get_logger().error(f"Error communicating with MoveIt server: {e}")
+            # Attempt to reconnect on next command
+            self.moveit_socket = None
+            return None
 
     def accept_connections(self):
         while rclpy.ok():
@@ -80,34 +129,44 @@ class ros2ArmOrchestrator(Node):
                         break
 
                     messages = data.strip().split('\n')
+                    tmp_message = ""
                     for msg_str in messages:
                         if msg_str:
+                            tmp_message = msg_str
                             # Store the latest message
-                            with self.latest_msg_lock:
-                                self.latest_msg_data = msg_str
+                            # with self.latest_msg_lock:
+                            #     self.latest_msg_data = msg_str
 
                             # Clear the queue and add the new message
-                            while not self.message_queue.empty():
-                                try:
-                                    self.message_queue.get_nowait()
-                                except queue.Empty:
-                                    pass
+                            # while not self.message_queue.empty():
+                            #     try:
+                            #         self.message_queue.get_nowait()
+                            #     except queue.Empty:
+                            #         pass
 
-                            self.message_queue.put(msg_str)
-                            self.get_logger().info(f"Queued message from {addr}")
+                            #self.message_queue.put(msg_str)
+                            # self.get_logger().info(f"Received message from {addr}")
 
                             # If a processing thread is not already running, start one
-                            if not self.processing_thread_active.is_set():
-                                self.processing_thread_active.set()
-                                self.processing_thread = threading.Thread(target=self.process_messages_from_queue)
-                                self.processing_thread.daemon = True
-                                self.processing_thread.start()
+                            # if not self.processing_thread_active.is_set():
+                            #     self.processing_thread_active.set()
+                            #     self.processing_thread = threading.Thread(target=self.process_messages_from_queue)
+                            #     self.processing_thread.daemon = True
+                            #     self.processing_thread.start()
 
-                            # Send response based on arm_moving_event
-                            if self.arm_moving_event.is_set():
-                                conn.sendall("arm moving\n".encode('utf-8'))
-                            else:
-                                conn.sendall("rxok\n".encode('utf-8'))
+
+
+                    with self.latest_msg_lock: # only get the latest message
+                        self.latest_msg_data = tmp_message
+
+
+                    # Send response based on arm_moving_event
+                    if self.arm_moving_event.is_set():
+                        conn.sendall("arm moving\n".encode('utf-8'))
+                    else:
+                        conn.sendall("rxok\n".encode('utf-8'))
+                        self.get_logger().info(f"Received message from {addr}")
+
 
                 except json.JSONDecodeError as e:
                     self.get_logger().error(f"JSON decoding error from {addr}: {e} for data: {data}")
@@ -115,31 +174,9 @@ class ros2ArmOrchestrator(Node):
                     self.get_logger().error(f"Socket receive error from {addr}: {e}")
                     break
                 except Exception as e:
-                    self.get_logger().error(f"Unexpected error in handle_client for {addr}: {e}")
+                    self.get_logger().error(f"Unexpected error in handle_client for {addr}: {e} on line {sys.exc_info()[2].tb_lineno}")
                     break
 
-    def process_messages_from_queue(self):
-        """Worker thread function to process messages from the queue."""
-        while rclpy.ok():
-            try:
-                msg_data = self.message_queue.get(block=True)
-                self.get_logger().info("Processing message from queue...")
-                self.yolo_data_rx_callback(msg_data)
-                self.message_queue.task_done()
-
-                if self.message_queue.empty():
-                    self.processing_thread_active.clear()
-                    break
-
-            except queue.Empty:
-                self.get_logger().warning("Queue unexpectedly empty in processing thread.")
-                self.processing_thread_active.clear()
-                break
-            except Exception as e:
-                self.get_logger().error(f"Error in processing thread: {e}")
-                self.message_queue.task_done()
-                self.processing_thread_active.clear()
-                break
 
     def constrain(self, value, min_val, max_val):
         """Constrain a value between min and max"""
@@ -150,50 +187,50 @@ class ros2ArmOrchestrator(Node):
         value = self.constrain(value, in_min, in_max)
         return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
-    def yolo_data_rx_callback(self, msg_data):
-        """Handle incoming yolo_data"""
-        try:
-            yolo_data = json.loads(msg_data)
-            print(f"Received command: {yolo_data}")
+    # def yolo_data_rx_callback(self, msg_data):
+    #     """Handle incoming yolo_data"""
+    #     try:
+    #         yolo_data = json.loads(msg_data)
+    #         print(f"Received command: {yolo_data}")
 
-            delta_x = yolo_data.get('x_requested_move', None)
-            delta_y = yolo_data.get('y_requested_move', None)
-            found_objects = yolo_data.get('found_objects', None)
-            main_obj_centered = yolo_data.get('main_object_centered', None)
-            main_target_object = yolo_data.get('main_target_object', None)
+    #         delta_x = yolo_data.get('x_requested_move', None)
+    #         delta_y = yolo_data.get('y_requested_move', None)
+    #         found_objects = yolo_data.get('found_objects', None)
+    #         main_obj_centered = yolo_data.get('main_object_centered', None)
+    #         main_target_object = yolo_data.get('main_target_object', None)
 
-            if isinstance(found_objects, str):
-                try:
-                    found_objects = eval(found_objects)
-                except (SyntaxError, NameError):
-                    self.get_logger().warning(f"Could not parse found_objects string: {found_objects}")
-                    found_objects = []
+    #         if isinstance(found_objects, str):
+    #             try:
+    #                 found_objects = eval(found_objects)
+    #             except (SyntaxError, NameError):
+    #                 self.get_logger().warning(f"Could not parse found_objects string: {found_objects}")
+    #                 found_objects = []
 
-            if len(found_objects) == 0:
-                print("No objects found")
-                return
+    #         if len(found_objects) == 0:
+    #             print("No objects found")
+    #             return
 
-            if delta_x is not None and delta_y is not None:
-                print(f"Moving to X: {delta_x}, Y: {delta_y}")
+    #         if delta_x is not None and delta_y is not None:
+    #             print(f"Moving to X: {delta_x}, Y: {delta_y}")
 
-            self.get_logger().info(f"main_obj_centered={main_obj_centered}")
+    #         self.get_logger().info(f"main_obj_centered={main_obj_centered}")
 
-            if delta_x is not None:
-                if delta_x > 3:
-                    delta_x = 3
-                if delta_x < -3:
-                    delta_x = -3
+    #         if delta_x is not None:
+    #             if delta_x > 3:
+    #                 delta_x = 3
+    #             if delta_x < -3:
+    #                 delta_x = -3
 
-            if delta_y is not None:
-                if delta_y > 10:
-                    delta_y = 10
-                if delta_y < -10:
-                    delta_y = -10
+    #         if delta_y is not None:
+    #             if delta_y > 10:
+    #                 delta_y = 10
+    #             if delta_y < -10:
+    #                 delta_y = -10
 
-        except json.JSONDecodeError as e:
-            self.get_logger().error(f"JSON decoding error: {e} for message: {msg_data}")
-        except Exception as e:
-            self.get_logger().error(f"Error processing yolo_data: {e}")
+    #     except json.JSONDecodeError as e:
+    #         self.get_logger().error(f"JSON decoding error: {e} for message: {msg_data}")
+    #     except Exception as e:
+    #         self.get_logger().error(f"Error processing yolo_data: {e}")
 
     def move_base(self, delta_degrees):
         try:
@@ -220,49 +257,173 @@ class ros2ArmOrchestrator(Node):
         except Exception as e:
             print(f"\nError in move_base(): {e}")
 
+
+
+    def close_gripper(self):
+        clamp_deg = 158
+        motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
+
+        if motion_result:
+            print("\n Gripper Motion completed successfully!")
+
+            command = f"x,x,x,x,x,x,x,{clamp_deg};"
+            command = command.encode('utf-8')
+            os.system('''echo "'''+ command.decode() +'''" > '''+serial_port)
+
+
+        else:
+            print("\n Gripper Motion failed. Please check the error messages.")
+
+
+
+
+    def open_gripper(self):
+        clamp_deg = 42
+        motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
+
+        if motion_result:
+            print("\n Gripper Motion completed successfully!")
+
+            command = f"x,x,x,x,x,x,x,{clamp_deg};"
+            command = command.encode('utf-8')
+            os.system('''echo "'''+ command.decode() +'''" > '''+serial_port)
+
+
+        else:
+            print("\n Gripper Motion failed. Please check the error messages.")
+
+
+
     def get_yolo_data(self):
         """Return the latest message data and clear the queue"""
-        with self.latest_msg_lock:
-            data = self.latest_msg_data
-            self.latest_msg_data = None
-            # Clear the queue
-            while not self.message_queue.empty():
-                try:
-                    self.message_queue.get_nowait()
-                except queue.Empty:
-                    pass
-            return data
 
-    def move_arm(self, x, y):
+        with self.latest_msg_lock:
+            self.latest_msg_data = None
+
+        while rclpy.ok():
+            if self.latest_msg_data is not None: #wait for the latest message
+                data = self.latest_msg_data
+                break
+            time.sleep(0.1)
+
+        return data
+
+
+
+
+    def move_to_joint_positions(self, joint_positions):
+        """Move the arm to specified joint positions and clear all messages"""
+
+
+        # Execute movement commands
+        response = None
+        if joint_positions is not None and len(joint_positions) > 0:
+
+            self.get_logger().info(f"Moving  to joint position: {joint_positions}")
+            self.arm_moving_event.set()
+            try:
+
+                command = f"movetofix,{joint_positions[0]},{joint_positions[1]},{joint_positions[2]},{joint_positions[3]},{joint_positions[4]},{joint_positions[5]}"    #'movetofix,270,90,95,180,15,22' - Move all joints to specific degrees");
+                self.get_logger().info(f"MoveIt command: {command}")
+                response = self.send_moveit_command(command)
+                if response:
+                    self.get_logger().info(f"MoveIt server response: {response}")
+                else:
+                    self.get_logger().error("Failed to get response from MoveIt server")
+            finally:
+                self.arm_moving_event.clear()
+        else:
+            self.get_logger().error("No joint positions provided")
+
+        return response
+
+
+
+
+
+
+
+
+    def move_arm(self, x, y, z):
         """Move the arm to specified x,y coordinates and clear all messages"""
         try:
             # Clear all pending messages
             with self.latest_msg_lock:
                 self.latest_msg_data = None
-            while not self.message_queue.empty():
-                try:
-                    self.message_queue.get_nowait()
-                except queue.Empty:
-                    pass
+
 
             # Execute movement commands
 
             if x is not None and x != 0:
-                self.get_logger().info(f"Moving base to X: {x}")
+                # self.get_logger().info(f"Moving base to X: {x}")
+                # self.arm_moving_event.set()
+                # self.move_base(x)
+                # self.arm_moving_event.clear()
+
+                self.get_logger().info(f"Moving rotating base: {x}")
                 self.arm_moving_event.set()
-                self.move_base(x)
-                self.arm_moving_event.clear()
+                try:
+                    #if abs(x) > 4 :
+                    x = x/1.5
+                    if x > 0:
+                        command = f"rr,{x}"
+                    else:
+                        x = abs(x)
+                        command = f"rl,{x}"
+                    response = self.send_moveit_command(command)
+                    if response:
+                        self.get_logger().info(f"MoveIt server response: {response}")
+                    else:
+                        self.get_logger().error("Failed to get response from MoveIt server")
+                finally:
+                    self.arm_moving_event.clear()
+
+
+
+
 
 
 
             elif y is not None and y != 0:
+                # self.get_logger().info(f"Moving to Y: {y}")
+                # self.arm_moving_event.set()
+                # try:
+                #     os.system("ros2 run axis_mover01 axis_mover0.1 y "+str(y))
+                # finally:
+                #     self.arm_moving_event.clear()
+
                 self.get_logger().info(f"Moving to Y: {y}")
                 self.arm_moving_event.set()
                 try:
-                    os.system("ros2 run axis_mover01 axis_mover0.1 y "+str(y))
+                    #if abs(y) > 4 :
+                    y = y/1.5
+                    command = f"y,{y}"
+                    response = self.send_moveit_command(command)
+                    if response:
+                        self.get_logger().info(f"MoveIt server response: {response}")
+                    else:
+                        self.get_logger().error("Failed to get response from MoveIt server")
                 finally:
                     self.arm_moving_event.clear()
 
+
+
+
+            elif z is not None and z != 0:
+
+                self.get_logger().info(f"Moving to Z: {z}")
+                self.arm_moving_event.set()
+                try:
+                    #if abs(y) > 4 :
+                    z = z/1.5
+                    command = f"z,{z}"
+                    response = self.send_moveit_command(command)
+                    if response:
+                        self.get_logger().info(f"MoveIt server response: {response}")
+                    else:
+                        self.get_logger().error("Failed to get response from MoveIt server")
+                finally:
+                    self.arm_moving_event.clear()
 
 
         except Exception as e:
@@ -271,49 +432,120 @@ class ros2ArmOrchestrator(Node):
     def destroy_node(self):
         self.get_logger().info("Shutting down socket server.")
         self.server_socket.close()
-        if self.processing_thread and self.processing_thread.is_alive():
-            self.get_logger().info("Waiting for processing thread to finish...")
+        # if self.processing_thread and self.processing_thread.is_alive():
+        #     self.get_logger().info("Waiting for processing thread to finish...")
         super().destroy_node()
 
 def main(args=None):
     # Initial arm setup (same as original)
-    joint_positions_list = [
-        degrees_to_radians(0.0),
-        degrees_to_radians(4.0),
-        degrees_to_radians(0.0),
-        degrees_to_radians(-90.0),
-        degrees_to_radians(0.0),
-        degrees_to_radians(-76.0),
+    joint_positions_list_start = [
+        90.0,
+        90.0,
+        90.0,
+        90.0,
+        90.0,
+        90.0,
     ]
 
-    motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+
+
+
+    joint_positions_list_min = [
+        0.0,
+        5.0,
+        0.0,
+        -84,
+        0.0,
+        -90.0,
+    ]
+
+
+    joint_positions_list_mid = [
+        0.0,
+        -12.0,
+        0.0,
+        -67.0,
+        0.0,
+        -85.0,
+    ]
+
+
+
+    joint_positions_deposit_box = [
+        60.0,
+        -12.0,
+        0.0,
+        -67.0,
+        0.0,
+        -85.0,
+    ]
+
+
+
+
+
+
+    # Initial arm setup (same as original)
+    joint_positions_list_max = [
+        0.0,
+        -30,
+        0.0,
+        -50.0,
+        0.0,
+        -88.0,
+    ]
+
+
+
+    rclpy.init(args=args)
+    ros2_arm_orchestrator = ros2ArmOrchestrator()
+
+
+    joint_positions_list = joint_positions_list_min
+    #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+    motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
     if motion_result:
         print("\nMotion TO START position completed successfully!")
     else:
         print("\nMotion TO START position failed. Please check the error messages.")
 
-    time.sleep(1)
 
-    motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=30.0)
-    clamp_deg = 158
-    command = f"x,x,x,x,x,x,x,{clamp_deg};"
-    command = command.encode('utf-8')
-    os.system('''echo "'''+ command.decode() +'''" > '''+serial_port)
 
+    # joint_positions_list = joint_positions_list_max
+
+    # #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+    # motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+    # if motion_result:
+    #     print("\nMotion TO START position completed successfully!")
+    # else:
+    #     print("\nMotion TO START position failed. Please check the error messages.")
+
+
+
+
+
+    joint_positions_list = joint_positions_list_mid
+
+    #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+    motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
     if motion_result:
-        print("\n Gripper Motion TO START position completed successfully!")
+        print("\nMotion TO START position completed successfully!")
     else:
-        print("\n Gripper Motion TO START position failed. Please check the error messages.")
+        print("\nMotion TO START position failed. Please check the error messages.")
 
-    time.sleep(2)
-    clamp_deg = 45
-    command = f"x,x,x,x,x,x,x,{clamp_deg};"
-    command = command.encode('utf-8')
-    os.system('''echo "'''+ command.decode() +'''" > '''+serial_port)
+
+    ros2_arm_orchestrator.close_gripper()
+
+    # clamp_deg = 45
+    # command = f"x,x,x,x,x,x,x,{clamp_deg};"
+    # command = command.encode('utf-8')
+    # os.system('''echo "'''+ command.decode() +'''" > '''+serial_port)
     time.sleep(1)
 
-    rclpy.init(args=args)
-    ros2_arm_orchestrator = ros2ArmOrchestrator()
+    ros2_arm_orchestrator.open_gripper()
+
+
+    #ros2_arm_orchestrator.move_arm(10,0,0)
 
     # Main infinite loop
     try:
@@ -326,11 +558,56 @@ def main(args=None):
                 # Parse the data and extract x,y if needed
                 try:
                     data = json.loads(yolo_data)
-                    x = data.get('x_requested_move', 0)
-                    y = data.get('y_requested_move', 0)
-                    # Move arm if needed
-                    if x != 0 or y != 0:
-                        ros2_arm_orchestrator.move_arm(x, y)
+                    delta_x =  data.get('x_requested_move', None)
+                    delta_y = data.get('y_requested_move', None)
+                    found_objects = data.get('found_objects', None)
+                    main_obj_centered = data.get('main_object_centered', None)
+                    main_target_object = data.get('main_target_object', None)
+
+                    if len(found_objects) == 0:
+                        print("No objects found,put a scan function here")
+                        continue
+
+                    if main_obj_centered:
+                        print("Object centered,put a centering function here")
+                        ros2_arm_orchestrator.move_arm(0,0,-45)
+                        ros2_arm_orchestrator.move_arm(0,0,-35)
+                        ros2_arm_orchestrator.move_arm(0,0,-25)
+                        ros2_arm_orchestrator.move_arm(0,0,-10)
+                        ros2_arm_orchestrator.move_arm(0,0,-10)
+                        ros2_arm_orchestrator.move_arm(0,0,-10)
+
+                        ros2_arm_orchestrator.close_gripper()
+                        ros2_arm_orchestrator.move_arm(0,0,+65)
+                        ros2_arm_orchestrator.move_arm(0,0,+35)
+
+
+
+                        joint_positions_list = joint_positions_deposit_box
+                        #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                        motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                        if motion_result:
+                            print("\nMotion TO DEPOSIT position completed successfully!")
+                        else:
+                            print("\nMotion TO DEPOSIT position failed. Please check the error messages.")
+
+
+                        ros2_arm_orchestrator.open_gripper()
+
+                        joint_positions_list = joint_positions_list_mid  
+                        #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                        motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                        if motion_result:
+                            print("\nMotion TO MID position completed successfully!")
+                        else:
+                            print("\nMotion TO MID position failed. Please check the error messages.")
+                        
+                        continue
+                    else:
+                        # Move arm if needed
+                        if delta_x is not None or delta_y is not None:
+                            ros2_arm_orchestrator.move_arm(delta_x, delta_y,0)
+
                 except json.JSONDecodeError:
                     pass
 

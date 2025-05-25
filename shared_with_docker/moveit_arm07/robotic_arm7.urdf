@@ -3,121 +3,121 @@
     <!-- Base Link -->
     <link name="base_link">
         <visual>
-            <origin xyz="0 0 0.0335"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.0425"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.06 0.045 0.065"/>
+                <box size="0.06 0.045 0.085"/>
             </geometry>
             <material name="blue">
                 <color rgba="0 0 1 1"/>  <!-- Blue -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.0335"/>
+            <origin xyz="0 0 0.0425"/>
             <geometry>
-                <box size="0.06 0.045 0.065"/>
+                <box size="0.06 0.045 0.085"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 1 -->
+    <!-- Link 1  C_like_link -->
     <link name="link1">
         <visual>
-            <origin xyz="0 0 0.015"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.0135"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.0598 0.022 0.027"/>
             </geometry>
-            <material name="green">
-                <color rgba="0 1 0 1"/>  <!-- Green -->
+            <material name="blue2">
+                <color rgba="0 0 1 1"/>  <!-- Blue -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.015"/>
+            <origin xyz="0 0 0.0135"/>
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.0598 0.022 0.027"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 2 -->
+    <!-- Link 2   rotation_link-->
     <link name="link2">
         <visual>
-            <origin xyz="0 0 0.0125"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.04625"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.062 0.022 0.085"/>
+                <box size="0.062 0.022 0.0925"/>
             </geometry>
             <material name="red">
                 <color rgba="1 0 0 1"/>  <!-- Red -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.0125"/>
+            <origin xyz="0 0 0.04625"/>
             <geometry>
-                <box size="0.062 0.022 0.085"/>
+                <box size="0.062 0.022 0.0925"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 3 -->
+    <!-- Link 3 C_like_link-->
     <link name="link3">
         <visual>
-            <origin xyz="0 0 0.01"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.0135"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.062 0.042 0.027"/>
             </geometry>
             <material name="green">
                 <color rgba="0 1 0 1"/>  <!-- Green -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.01"/>
+            <origin xyz="0 0 0.0135"/>
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.062 0.042 0.027"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 4 -->
+    <!-- Link 4 rotation_link-->
     <link name="link4">
         <visual>
-            <origin xyz="0 0 0.01"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.04625"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.062 0.022 0.085"/>
+                <box size="0.062 0.022 0.0925"/>
             </geometry>
             <material name="red">
                 <color rgba="1 0 0 1"/>  <!-- Red -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.01"/>
+            <origin xyz="0 0 0.04625"/>
             <geometry>
-                <box size="0.062 0.022 0.085"/>
+                <box size="0.062 0.022 0.0925"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 5 -->
+    <!-- Link 5 C_like_link-->
     <link name="link5">
         <visual>
-            <origin xyz="0 0 -0.02"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.0135"/>  <!-- Half of the height to center the visual -->
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.062 0.042 0.027"/>
             </geometry>
             <material name="green">
                 <color rgba="0 1 0 1"/>  <!-- Green -->
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 -0.02"/>
+            <origin xyz="0 0 0.0135"/>
             <geometry>
-                <box size="0.062 0.042 0.035"/>
+                <box size="0.062 0.042 0.027"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Link 6 -->
+    <!-- Link 6 gripper_base-->
     <link name="link6">
         <visual>
-            <origin xyz="0 0 0.01"/>  <!-- Half of the height to center the visual -->
+            <origin xyz="0 0 0.0375"/>  <!-- Half of the height to center the visual -->
             <geometry>
                 <box size="0.062 0.022 0.075"/>
             </geometry>
@@ -126,7 +126,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.01"/>
+            <origin xyz="0 0 0.0375"/>
             <geometry>
                 <box size="0.062 0.022 0.075"/>
             </geometry>
@@ -194,7 +194,7 @@
     <joint name="rotating_base" type="revolute">
         <parent link="base_link"/>
         <child link="link1"/>
-        <origin xyz="0 0 0.067" rpy="0 0 0"/>  <!-- Moved to top of base_link -->
+        <origin xyz="0 0 0.085" rpy="0 0 0"/>  <!-- Distance from world frame to first rotating joint -->
         <axis xyz="0 0 1"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -202,7 +202,7 @@
     <joint name="joint1" type="revolute">
         <parent link="link1"/>
         <child link="link2"/>
-        <origin xyz="0 0 0.03" rpy="0 0 0"/>  <!-- Moved to top of link1 -->
+        <origin xyz="0 0 0.027" rpy="0 0 0"/>  <!-- Distance from base of link1 to where joint2 rotates -->
         <axis xyz="1 0 0"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -210,7 +210,7 @@
     <joint name="joint2" type="revolute">
         <parent link="link2"/>
         <child link="link3"/>
-        <origin xyz="0 0 0.062" rpy="0 0 0"/>  
+        <origin xyz="0 0 0.0925" rpy="0 0 0"/>  <!-- Distance from joint2 to where joint3 rotates -->
         <axis xyz="0 0 1"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -218,7 +218,7 @@
     <joint name="joint3" type="revolute">
         <parent link="link3"/>
         <child link="link4"/>
-        <origin xyz="0 0 0.03" rpy="0 0 0"/> 
+        <origin xyz="0 0 0.027" rpy="0 0 0"/>  <!-- Distance from joint3 to where joint4 rotates -->
         <axis xyz="1 0 0"/>
         <limit effort="1.0" lower="-1.97222" upper="1.97222" velocity="1.0"/>
     </joint>
@@ -226,7 +226,7 @@
     <joint name="joint4" type="revolute">
         <parent link="link4"/>
         <child link="link5"/>
-        <origin xyz="0 0 0.09" rpy="0 0 0"/>  
+        <origin xyz="0 0 0.0925" rpy="0 0 0"/>  <!-- Distance from joint4 to where joint5 rotates -->
         <axis xyz="0 0 1"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -234,7 +234,7 @@
     <joint name="joint5" type="revolute">
         <parent link="link5"/>
         <child link="link6"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>  
+        <origin xyz="0 0 0.027" rpy="0 0 0"/>  <!-- Distance from joint5 to where joint6 rotates -->
         <axis xyz="1 0 0"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -242,7 +242,7 @@
     <joint name="joint6" type="revolute">
         <parent link="link6"/>
         <child link="link_grabber"/>
-        <origin xyz="0 0 0.062" rpy="0 0 0"/>  
+        <origin xyz="0 0 0.075" rpy="0 0 0"/>  <!-- Distance from joint6 to grabber -->
         <axis xyz="0 0 1"/>
         <limit effort="1.0" lower="-1.5708" upper="1.5708" velocity="1.0"/>
     </joint>
@@ -251,16 +251,15 @@
     <joint name="clamp_fixed_joint" type="fixed">
         <parent link="link_grabber"/>
         <child link="clamp_fixed"/>
-        <origin xyz="0 0.03 0.04" rpy="0 0 0"/>  <!-- Rotated 45 degrees around X-axis -->
+        <origin xyz="0 0.03 0.04" rpy="0 0 0"/>  <!-- Position relative to link_grabber -->
     </joint>
 
     <!-- Moving Clamp Joint -->
     <joint name="clamp_moving_joint" type="revolute">
         <parent link="link_grabber"/>
         <child link="clamp_moving"/>
-        <origin xyz="0 -0.03 0.04" rpy="0 0 0"/>  <!-- Positioned at the end of link_grabber -->
+        <origin xyz="0 -0.03 0.04" rpy="0 0 0"/>  <!-- Position relative to link_grabber -->
         <axis xyz="1 0 0"/>  <!-- Rotates around the X-axis -->
         <limit effort="1.0" lower="-0.7854" upper="0.7854" velocity="1.0"/>  <!-- -45 to +45 degrees -->
     </joint>
 </robot>
-

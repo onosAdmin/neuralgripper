@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Move the gripper to a defined position given joint6 and clamp_moving_joint positions in degrees
+# Handle the gripper rotating the joint6 motor and clamp_moving_joint motor positionsto a given rotation in degrees
 # With immediate retry on certain errors and timeout handling
 
 import rclpy
@@ -267,8 +267,10 @@ class MoveGripperToPosition(Node):
             self._timeout_timer.cancel()
 
 
-def move_gripper_to_position(joint6_deg=0.0, clamp_deg=0.0):
-    rclpy.init()
+def move_gripper_to_position(joint6_deg=0.0, clamp_deg=0.0,init=True):
+
+    if init:
+        rclpy.init()
     
     gripper_mover = MoveGripperToPosition()
     motion_result = False
@@ -295,7 +297,8 @@ def move_gripper_to_position(joint6_deg=0.0, clamp_deg=0.0):
         traceback.print_exc()
     finally:
         gripper_mover.destroy_node()
-        rclpy.shutdown()
+        if init:
+            rclpy.shutdown()
 
     return motion_result
 
