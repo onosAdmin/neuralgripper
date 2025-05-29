@@ -8,12 +8,11 @@
 given this circuitpython script used on esp32
 modify it to read data from serial port and then control 6 servomotors
 the serial protocol will be:
-255,230,001,050,000,111
-each number followed by ','  in this case servo zero is set to 255 and servo 4 is set to 000
-converted to 0 180 degree it means servo 0  is set to 180 degree and servo4 is set to 0 degree
+20,90,90,70,90,90,90,0;
+each number followed by ','  in this case servo zero is set to 20 degree and servo 4 is set to 70 degree
 if a servo don't need to be updated I will write x so if I want to change only the last servo I will write:
 x,x,x,x,x,x,x,130;
-servo_pins = [board.IO0, board.IO1, board.IO10, board.IO18, board.IO19, board.IO21, board.IO22]  # Change to match your setup
+servo_pins = [ board.GPIO39, board.GPIO38,board.GPIO45,board.GPIO21,board.GPIO16,board.GPIO18,board.GPIO8,board.GPIO47]  # Change to match your setup
 echo "155,127,127,127,127,127,127,x;" > /dev/ttyACM0
 
 90,90,90,90,90,90,90,0;
