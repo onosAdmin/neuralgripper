@@ -12,7 +12,7 @@ Build the package:
 
 ```
 
-cd /shared_with_docker/  && colcon build --packages-select hello_moveit01
+cd /shared_with_docker/  && colcon build --packages-select socket_arm_mover01
 ```
 
 

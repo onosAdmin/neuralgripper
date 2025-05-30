@@ -35,6 +35,10 @@ python3 ros2_arm_orchestrator.py
 
 docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
 cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
+
+
+cd /shared_with_docker/  && colcon build --packages-select socket_arm_mover01
+cd /shared_with_docker/  &&  source install/setup.bash && source /opt/ros/rolling/setup.bash
 cd /shared_with_docker/  && ros2 run socket_arm_mover01 socket_arm_mover_v0.1
 
 
