@@ -1,0 +1,17 @@
+https://github.com/roTechnic/Cheats6DOFInverseKinematics/blob/main/Inverse%20kinematics.ipynb
+
+
+
+
+
+
+
+
+
+
+
+
+
+dentro a docker:
+pip3 uninstall torch torchvision torchaudio
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu122
