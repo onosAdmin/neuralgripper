@@ -24,6 +24,12 @@ once the arm gripper is in position the arm will lower it , grab the object and 
 ## Getting started
 
 
+## Requirement
+
+You need a linux pc with nvidia gpu with nvidia drivers installed
+You need 2 usb, one for usb camera and one for esp32 communication
+
+
 
 
 ## Testing docker containers communication
@@ -226,4 +232,10 @@ xhost +local:docker
 
 
 
+
+If you want to see the example arm in rviz this is the command:
+
+```
+ros2 launch moveit2_tutorials demo.launch.py rviz_tutorial:=true
+```
 .

@@ -348,7 +348,7 @@ class ros2ArmOrchestrator(Node):
         self.arm_moving_event.set()
         try:
 
-            command = f"scaling,{speed},{accelleration}"   
+            command = f"set_vel,{speed}"   
             self.get_logger().info(f"client command: {command}")
             response = self.send_moveit_command(command)
             if response:
@@ -357,6 +357,21 @@ class ros2ArmOrchestrator(Node):
                 self.get_logger().error("Failed to get response from socket server")
         finally:
             self.arm_moving_event.clear()
+            
+        try:
+
+            command = f"set_acc,{accelleration}"   
+            self.get_logger().info(f"client command: {command}")
+            response = self.send_moveit_command(command)
+            if response:
+                self.get_logger().info(f"server socket response: {response}")
+            else:
+                self.get_logger().error("Failed to get response from socket server")
+        finally:
+            self.arm_moving_event.clear()
+            
+            
+            
 
 
         return response
@@ -608,7 +623,8 @@ def main(args=None):
 
                             ros2_arm_orchestrator.close_gripper()
                             ros2_arm_orchestrator.move_arm(0,0,+65)
-                            ros2_arm_orchestrator.move_arm(0,0,+45)
+                            ros2_arm_orchestrator.move_arm(0,0,+50)
+                            ros2_arm_orchestrator.move_arm(0,0,+15)
                             ros2_arm_orchestrator.move_arm(0,0,+15)
 
                             joint_positions_list = joint_positions_deposit_box
@@ -633,6 +649,7 @@ def main(args=None):
                         
                         else:
                             print(f"Object centered  for {object_centered_count} ")
+                            object_centered_count = object_centered_count - 0.1
                         
                         
                         continue

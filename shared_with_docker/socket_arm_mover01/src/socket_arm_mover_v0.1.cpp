@@ -3,10 +3,10 @@
 #include <thread>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/executors.hpp>
-#include <moveit/move_group_interface/move_group_interface.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <moveit/move_group_interface/move_group_interface.h> // Corrected include path
+#include <sensor_msgs/msg/joint_state.h>
+#include <std_msgs/msg/float64_multi_array.h>
+#include <geometry_msgs/msg/pose_stamped.h>
 
 // Socket includes
 #include <sys/socket.h>
@@ -14,13 +14,14 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#include <cmath>  // For M_PI
+#include <cmath>     // For M_PI
 #include <string>
 #include <vector>
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <algorithm> // For std::remove
 
 /*
 MoveIt2 Socket Server
@@ -31,12 +32,15 @@ To run:
 ros2 run axis_mover01 socket_server [port]
 Default port is 8080
 
-Commands: 
+Commands:
 - "x,distance_mm", "y,distance_mm", "z,distance_mm" - Linear movement
 - "rr,degrees", "rl,degrees" - Base rotation
 - "movetofix,deg1,deg2,deg3,deg4,deg5,deg6" - Move all joints to specific degrees
 - "get_pose" - Get current end effector pose
-Response: "x,y,z,ox,oy,oz,ow" (position in meters, orientation as quaternion)
+- "get_joints" - Get current joint positions in degrees
+- "set_vel,factor" - Set velocity scaling factor (0.0 to 1.0)
+- "set_acc,factor" - Set acceleration scaling factor (0.0 to 1.0)
+Response: "x,y,z,ox,oy,oz,ow" (position in meters, orientation as quaternion) or confirmation/error.
 */
 
 class AxisMover {
@@ -55,6 +59,12 @@ public:
             RCLCPP_INFO(node_->get_logger(), "Waiting briefly for MoveIt internal state to update...");
             std::this_thread::sleep_for(std::chrono::seconds(3));
 
+            // Set default scaling factors (optional, but good practice)
+            move_group_->setMaxVelocityScalingFactor(1.0); // Full speed
+            move_group_->setMaxAccelerationScalingFactor(1.0); // Full acceleration
+            RCLCPP_INFO(node_->get_logger(), "Default velocity and acceleration scaling factors set to 1.0.");
+
+
             RCLCPP_INFO(node_->get_logger(), "AxisMover initialization complete.");
 
         } catch (const std::exception& e) {
@@ -72,15 +82,15 @@ public:
             }
 
             RCLCPP_INFO(node_->get_logger(), "Moving joints to positions: [%.1f°, %.1f°, %.1f°, %.1f°, %.1f°, %.1f°]",
-                       joint_degrees[0], joint_degrees[1], joint_degrees[2], 
-                       joint_degrees[3], joint_degrees[4], joint_degrees[5]);
+                                 joint_degrees[0], joint_degrees[1], joint_degrees[2],
+                                 joint_degrees[3], joint_degrees[4], joint_degrees[5]);
 
             // Convert degrees to radians
             std::vector<double> joint_radians(6);
             for (size_t i = 0; i < 6; ++i) {
                 joint_radians[i] = joint_degrees[i] * M_PI / 180.0;
-                RCLCPP_INFO(node_->get_logger(), "Joint %zu: %.1f° = %.4f rad", 
-                           i, joint_degrees[i], joint_radians[i]);
+                RCLCPP_INFO(node_->get_logger(), "Joint %zu: %.1f° = %.4f rad",
+                                         i, joint_degrees[i], joint_radians[i]);
             }
 
             // Set the joint target
@@ -114,7 +124,7 @@ public:
                 if (execute_result == moveit::core::MoveItErrorCode::SUCCESS) {
                     // Get the new pose after movement
                     geometry_msgs::msg::PoseStamped new_pose = move_group_->getCurrentPose();
-                    
+
                     // Also get current joint values to verify
                     std::vector<double> current_joints = move_group_->getCurrentJointValues();
                     RCLCPP_INFO(node_->get_logger(), "Movement complete. Current joint positions (degrees):");
@@ -122,7 +132,7 @@ public:
                         double degrees = current_joints[i] * 180.0 / M_PI;
                         RCLCPP_INFO(node_->get_logger(), "  Joint %zu: %.2f°", i, degrees);
                     }
-                    
+
                     // Format response: x,y,z,ox,oy,oz,ow (position + quaternion orientation)
                     std::ostringstream oss;
                     oss << std::fixed << std::setprecision(6)
@@ -133,7 +143,7 @@ public:
                         << new_pose.pose.orientation.y << ","
                         << new_pose.pose.orientation.z << ","
                         << new_pose.pose.orientation.w;
-                    
+
                     response = oss.str();
                     return true;
                 } else {
@@ -155,10 +165,10 @@ public:
     bool rotateBase(const std::string& direction, double degrees, std::string& response) {
         try {
             RCLCPP_INFO(node_->get_logger(), "Getting current joint values...");
-            
+
             // Get current joint values
             std::vector<double> joint_values = move_group_->getCurrentJointValues();
-            
+
             if (joint_values.empty()) {
                 RCLCPP_ERROR(node_->get_logger(), "Failed to get current joint values");
                 response = "ERROR: Failed to get current joint values";
@@ -167,7 +177,7 @@ public:
 
             // Convert degrees to radians
             double radians = degrees * M_PI / 180.0;
-            
+
             // Apply rotation direction (assuming rotating_base is the first joint - index 0)
             if (direction == "rr") {
                 joint_values[0] += radians;  // Right rotation (positive)
@@ -179,8 +189,8 @@ public:
                 return false;
             }
 
-            RCLCPP_INFO(node_->get_logger(), "Target base joint angle: %.3f radians (%.3f degrees)", 
-                       joint_values[0], joint_values[0] * 180.0 / M_PI);
+            RCLCPP_INFO(node_->get_logger(), "Target base joint angle: %.3f radians (%.3f degrees)",
+                                 joint_values[0], joint_values[0] * 180.0 / M_PI);
 
             // Set the joint target
             move_group_->setJointValueTarget(joint_values);
@@ -213,7 +223,7 @@ public:
                 if (execute_result == moveit::core::MoveItErrorCode::SUCCESS) {
                     // Get the new pose after rotation
                     geometry_msgs::msg::PoseStamped new_pose = move_group_->getCurrentPose();
-                    
+
                     // Format response: x,y,z,ox,oy,oz,ow (position + quaternion orientation)
                     std::ostringstream oss;
                     oss << std::fixed << std::setprecision(6)
@@ -224,7 +234,7 @@ public:
                         << new_pose.pose.orientation.y << ","
                         << new_pose.pose.orientation.z << ","
                         << new_pose.pose.orientation.w;
-                    
+
                     response = oss.str();
                     return true;
                 } else {
@@ -268,9 +278,9 @@ public:
             }
 
             RCLCPP_INFO(node_->get_logger(), "Current position: x=%.3f, y=%.3f, z=%.3f",
-                                             current_pose.pose.position.x,
-                                             current_pose.pose.position.y,
-                                             current_pose.pose.position.z);
+                                         current_pose.pose.position.x,
+                                         current_pose.pose.position.y,
+                                         current_pose.pose.position.z);
 
             geometry_msgs::msg::Pose target_pose = current_pose.pose;
             double step = step_mm / 1000.0;  // Convert step from mm to meters
@@ -285,7 +295,7 @@ public:
             }
 
             RCLCPP_INFO(node_->get_logger(), "Target position: x=%.3f, y=%.3f, z=%.3f",
-                                             target_pose.position.x, target_pose.position.y, target_pose.position.z);
+                                         target_pose.position.x, target_pose.position.y, target_pose.position.z);
 
             move_group_->setPoseTarget(target_pose);
             move_group_->setPlanningTime(10.0);
@@ -317,7 +327,7 @@ public:
                 if (execute_result == moveit::core::MoveItErrorCode::SUCCESS) {
                     // Get the new pose after movement
                     geometry_msgs::msg::PoseStamped new_pose = move_group_->getCurrentPose();
-                    
+
                     // Format response: x,y,z,ox,oy,oz,ow (position + quaternion orientation)
                     std::ostringstream oss;
                     oss << std::fixed << std::setprecision(6)
@@ -328,7 +338,7 @@ public:
                         << new_pose.pose.orientation.y << ","
                         << new_pose.pose.orientation.z << ","
                         << new_pose.pose.orientation.w;
-                    
+
                     response = oss.str();
                     return true;
                 } else {
@@ -350,7 +360,7 @@ public:
     std::string getCurrentPose() {
         try {
             geometry_msgs::msg::PoseStamped current_pose = move_group_->getCurrentPose();
-            
+
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(6)
                 << current_pose.pose.position.x << ","
@@ -360,7 +370,7 @@ public:
                 << current_pose.pose.orientation.y << ","
                 << current_pose.pose.orientation.z << ","
                 << current_pose.pose.orientation.w;
-            
+
             return oss.str();
         } catch (const std::exception& e) {
             return "ERROR: Failed to get current pose - " + std::string(e.what());
@@ -370,11 +380,11 @@ public:
     std::string getCurrentJoints() {
         try {
             std::vector<double> joint_values = move_group_->getCurrentJointValues();
-            
+
             if (joint_values.empty()) {
                 return "ERROR: Failed to get current joint values";
             }
-            
+
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(2);
             for (size_t i = 0; i < joint_values.size() && i < 6; ++i) {
@@ -382,12 +392,41 @@ public:
                 if (i > 0) oss << ",";
                 oss << degrees;
             }
-            
+
             return oss.str();
         } catch (const std::exception& e) {
             return "ERROR: Failed to get current joints - " + std::string(e.what());
         }
     }
+
+    // New: Set velocity scaling factor
+    bool setVelocityScalingFactor(double factor, std::string& response) {
+        if (factor >= 0.0 && factor <= 1.0) {
+            move_group_->setMaxVelocityScalingFactor(factor);
+            RCLCPP_INFO(node_->get_logger(), "Set velocity scaling factor to %.2f", factor);
+            response = "Velocity scaling set to " + std::to_string(factor);
+            return true;
+        } else {
+            response = "ERROR: Velocity scaling factor must be between 0.0 and 1.0";
+            RCLCPP_ERROR(node_->get_logger(), response.c_str());
+            return false;
+        }
+    }
+
+    // New: Set acceleration scaling factor
+    bool setAccelerationScalingFactor(double factor, std::string& response) {
+        if (factor >= 0.0 && factor <= 1.0) {
+            move_group_->setMaxAccelerationScalingFactor(factor);
+            RCLCPP_INFO(node_->get_logger(), "Set acceleration scaling factor to %.2f", factor);
+            response = "Acceleration scaling set to " + std::to_string(factor);
+            return true;
+        } else {
+            response = "ERROR: Acceleration scaling factor must be between 0.0 and 1.0";
+            RCLCPP_ERROR(node_->get_logger(), response.c_str());
+            return false;
+        }
+    }
+
 
 private:
     rclcpp::Node::SharedPtr node_;
@@ -449,9 +488,9 @@ public:
         while (rclcpp::ok()) {
             struct sockaddr_in client_addr;
             socklen_t client_len = sizeof(client_addr);
-            
+
             RCLCPP_INFO(node_->get_logger(), "Waiting for client connection...");
-            
+
             int client_socket = accept(server_socket_, (struct sockaddr*)&client_addr, &client_len);
             if (client_socket < 0) {
                 RCLCPP_ERROR(node_->get_logger(), "Failed to accept client connection");
@@ -469,11 +508,11 @@ public:
 private:
     void handleClient(int client_socket) {
         char buffer[1024];
-        
+
         while (rclcpp::ok()) {
             memset(buffer, 0, sizeof(buffer));
             int bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
-            
+
             if (bytes_received <= 0) {
                 RCLCPP_INFO(node_->get_logger(), "Client disconnected");
                 break;
@@ -483,18 +522,18 @@ private:
             // Remove newline characters
             command.erase(std::remove(command.begin(), command.end(), '\n'), command.end());
             command.erase(std::remove(command.begin(), command.end(), '\r'), command.end());
-            
+
             RCLCPP_INFO(node_->get_logger(), "Received command: '%s'", command.c_str());
 
             std::string response = processCommand(command);
-            
+
             // Send response
             response += "\n";  // Add newline for easier parsing on client side
             send(client_socket, response.c_str(), response.length(), 0);
-            
+
             RCLCPP_INFO(node_->get_logger(), "Sent response: '%s'", response.c_str());
         }
-        
+
         close(client_socket);
     }
 
@@ -503,7 +542,7 @@ private:
         if (command == "get_pose" || command == "GET_POSE") {
             return mover_->getCurrentPose();
         }
-        
+
         if (command == "get_joints" || command == "GET_JOINTS") {
             return mover_->getCurrentJoints();
         }
@@ -513,13 +552,23 @@ private:
             return processMoveToFixCommand(command);
         }
 
+        // New: Check for velocity scaling command
+        if (command.rfind("set_vel,", 0) == 0) { // Using rfind with 0 to check prefix
+            return processScalingCommand(command, "velocity");
+        }
+
+        // New: Check for acceleration scaling command
+        if (command.rfind("set_acc,", 0) == 0) { // Using rfind with 0 to check prefix
+            return processScalingCommand(command, "acceleration");
+        }
+
         // Parse regular command: type,value (e.g., "x,10", "rr,5", "rl,10")
         std::istringstream iss(command);
         std::string cmd_type;
         std::string value_str;
-        
+
         if (!std::getline(iss, cmd_type, ',') || !std::getline(iss, value_str)) {
-            return "ERROR: Invalid command format. Use 'type,value' (e.g., 'x,10', 'rr,5', 'rl,10') or 'movetofix,deg1,deg2,deg3,deg4,deg5,deg6'";
+            return "ERROR: Invalid command format. Use 'type,value' (e.g., 'x,10', 'rr,5', 'rl,10'), 'movetofix,deg1,...', 'set_vel,factor', or 'set_acc,factor'.";
         }
 
         // Parse value
@@ -531,7 +580,7 @@ private:
         }
 
         std::string response;
-        
+
         // Check if it's a rotation command
         if (cmd_type == "rr" || cmd_type == "rl") {
             bool success = mover_->rotateBase(cmd_type, value, response);
@@ -543,26 +592,56 @@ private:
             return response;
         }
         else {
-            return "ERROR: Invalid command type. Use x,y,z for linear movement, rr,rl for base rotation, or movetofix for joint positions";
+            return "ERROR: Invalid command type. Use x,y,z for linear movement, rr,rl for base rotation, movetofix for joint positions, set_vel for velocity scaling, or set_acc for acceleration scaling.";
         }
     }
+
+    // New: Helper function to process scaling commands
+    std::string processScalingCommand(const std::string& command, const std::string& type) {
+        std::istringstream iss(command);
+        std::string cmd_prefix; // "set_vel" or "set_acc"
+        std::string factor_str;
+
+        if (!std::getline(iss, cmd_prefix, ',') || !std::getline(iss, factor_str)) {
+            return "ERROR: Invalid " + type + " scaling command format. Use 'set_vel,factor' or 'set_acc,factor'.";
+        }
+
+        double factor;
+        try {
+            factor = std::stod(factor_str);
+        } catch (const std::exception& e) {
+            return "ERROR: Invalid " + type + " scaling factor. Must be a number.";
+        }
+
+        std::string response;
+        bool success;
+        if (type == "velocity") {
+            success = mover_->setVelocityScalingFactor(factor, response);
+        } else if (type == "acceleration") {
+            success = mover_->setAccelerationScalingFactor(factor, response);
+        } else {
+            return "ERROR: Unknown scaling type."; // Should not happen with current logic
+        }
+        return response;
+    }
+
 
     std::string processMoveToFixCommand(const std::string& command) {
         // Expected format: "movetofix,deg1,deg2,deg3,deg4,deg5,deg6"
         std::istringstream iss(command);
         std::string token;
         std::vector<std::string> tokens;
-        
+
         // Split by comma
         while (std::getline(iss, token, ',')) {
             tokens.push_back(token);
         }
-        
+
         // Should have 7 tokens: "movetofix" + 6 degree values
         if (tokens.size() != 7) {
             return "ERROR: movetofix command requires exactly 6 joint degree values. Format: movetofix,deg1,deg2,deg3,deg4,deg5,deg6";
         }
-        
+
         // Parse the degree values
         std::vector<double> joint_degrees(6);
         try {
@@ -572,7 +651,7 @@ private:
         } catch (const std::exception& e) {
             return "ERROR: Invalid degree values. All joint degrees must be numbers";
         }
-        
+
         // Execute the movement
         std::string response;
         bool success = mover_->moveToJointPositions(joint_degrees, response);
@@ -645,6 +724,9 @@ int main(int argc, char** argv) {
         RCLCPP_INFO(node->get_logger(), "  'movetofix,270,90,95,180,15,22' - Move all joints to specific degrees");
         RCLCPP_INFO(node->get_logger(), "  'get_pose' - Get current end effector pose");
         RCLCPP_INFO(node->get_logger(), "  'get_joints' - Get current joint positions in degrees");
+        RCLCPP_INFO(node->get_logger(), "  'set_vel,0.7' - Set velocity scaling factor to 70%%");
+        RCLCPP_INFO(node->get_logger(), "  'set_acc,0.5' - Set acceleration scaling factor to 50%%");
+
 
         // Run server (blocking call)
         server.run();
