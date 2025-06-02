@@ -89,7 +89,7 @@ class ros2ArmOrchestrator(Node):
 
 
     def send_moveit_command(self, command):
-        """Send a command to the MoveIt server and get response"""
+        """Send a command to the c++ socket server and get response"""
         try:
             if not self.moveit_socket:
                 if not self.connect_to_moveit_server():
@@ -261,7 +261,7 @@ class ros2ArmOrchestrator(Node):
 
     def close_gripper(self):
         clamp_deg = 89
-        motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
+        motion_result = move_gripper_to_position(joint6_deg=-80.0, clamp_deg=clamp_deg,init=False)
 
         if motion_result:
             print("\n Gripper Motion completed successfully!")
@@ -279,7 +279,7 @@ class ros2ArmOrchestrator(Node):
 
     def open_gripper(self):
         clamp_deg = 20
-        motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
+        motion_result = move_gripper_to_position(joint6_deg=-80.0, clamp_deg=clamp_deg,init=False)
 
         if motion_result:
             print("\n Gripper Motion completed successfully!")
@@ -338,6 +338,28 @@ class ros2ArmOrchestrator(Node):
         return response
 
 
+    def set_speed_and_accelleration(self, speed,accelleration):
+
+
+        # Execute movement commands
+        response = None
+
+        self.get_logger().info(f"speed :{speed} set_speed_and_accelleration: {accelleration} ")
+        self.arm_moving_event.set()
+        try:
+
+            command = f"scaling,{speed},{accelleration}"   
+            self.get_logger().info(f"client command: {command}")
+            response = self.send_moveit_command(command)
+            if response:
+                self.get_logger().info(f"server socket response: {response}")
+            else:
+                self.get_logger().error("Failed to get response from socket server")
+        finally:
+            self.arm_moving_event.clear()
+
+
+        return response
 
 
 
@@ -525,6 +547,8 @@ def main(args=None):
 
 
     joint_positions_list = joint_positions_list_mid
+    
+    ros2_arm_orchestrator.set_speed_and_accelleration(1,1)
 
     #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
     motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
@@ -534,6 +558,8 @@ def main(args=None):
         print("\nMotion TO START position failed. Please check the error messages.")
 
 
+
+    
     ros2_arm_orchestrator.close_gripper()
 
     # clamp_deg = 45
@@ -544,7 +570,7 @@ def main(args=None):
 
     ros2_arm_orchestrator.open_gripper()
 
-
+    object_centered_count = 0
     #ros2_arm_orchestrator.move_arm(10,0,0)
 
     # Main infinite loop
@@ -569,38 +595,44 @@ def main(args=None):
                         continue
 
                     if main_obj_centered:
-                        print("Object centered,put a centering function here")
-                        ros2_arm_orchestrator.move_arm(0,0,-45)
-                        ros2_arm_orchestrator.move_arm(0,0,-35)
-                        ros2_arm_orchestrator.move_arm(0,0,-25)
-                        ros2_arm_orchestrator.move_arm(0,0,-10)
-                        ros2_arm_orchestrator.move_arm(0,0,-10)
-                        ros2_arm_orchestrator.move_arm(0,0,-10)
+                        object_centered_count = object_centered_count + 1
+                        if object_centered_count > 5:
+                            object_centered_count = 0
+                            print("Object centered and ready for pick up ,put a centering function here")
+                            ros2_arm_orchestrator.move_arm(0,0,-45)
+                            ros2_arm_orchestrator.move_arm(0,0,-35)
+                            ros2_arm_orchestrator.move_arm(0,0,-25)
+                            ros2_arm_orchestrator.move_arm(0,0,-10)
+                            ros2_arm_orchestrator.move_arm(0,0,-10)
+                            ros2_arm_orchestrator.move_arm(0,0,-10)
 
-                        ros2_arm_orchestrator.close_gripper()
-                        ros2_arm_orchestrator.move_arm(0,0,+65)
-                        ros2_arm_orchestrator.move_arm(0,0,+35)
+                            ros2_arm_orchestrator.close_gripper()
+                            ros2_arm_orchestrator.move_arm(0,0,+65)
+                            ros2_arm_orchestrator.move_arm(0,0,+35)
+
+                            joint_positions_list = joint_positions_deposit_box
+                            #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                            motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                            if motion_result:
+                                print("\nMotion TO DEPOSIT position completed successfully!")
+                            else:
+                                print("\nMotion TO DEPOSIT position failed. Please check the error messages.")
 
 
+                            ros2_arm_orchestrator.open_gripper()
 
-                        joint_positions_list = joint_positions_deposit_box
-                        #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
-                        motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
-                        if motion_result:
-                            print("\nMotion TO DEPOSIT position completed successfully!")
+                            joint_positions_list = joint_positions_list_mid  
+                            #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                            motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                            if motion_result:
+                                print("\nMotion TO MID position completed successfully!")
+                            else:
+                                print("\nMotion TO MID position failed. Please check the error messages.")
+                        
+                        
                         else:
-                            print("\nMotion TO DEPOSIT position failed. Please check the error messages.")
-
-
-                        ros2_arm_orchestrator.open_gripper()
-
-                        joint_positions_list = joint_positions_list_mid  
-                        #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
-                        motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
-                        if motion_result:
-                            print("\nMotion TO MID position completed successfully!")
-                        else:
-                            print("\nMotion TO MID position failed. Please check the error messages.")
+                            print(f"Object centered  for {object_centered_count} ")
+                        
                         
                         continue
                     else:

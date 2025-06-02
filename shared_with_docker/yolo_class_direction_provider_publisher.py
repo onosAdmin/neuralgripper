@@ -28,7 +28,9 @@ class ArmDirectionProvider:
         self.model = YOLO('best_lego_detect.pt')
 
         # Initialize webcam
-        self.cap = cv2.VideoCapture(2)
+        #self.cap = cv2.VideoCapture(2) for laptop with webcam
+        self.cap = cv2.VideoCapture(0)
+
         self.cap.set(3, 640)
         self.cap.set(4, 480)
         if not self.cap.isOpened():
