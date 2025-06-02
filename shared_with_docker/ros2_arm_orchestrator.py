@@ -608,7 +608,8 @@ def main(args=None):
 
                             ros2_arm_orchestrator.close_gripper()
                             ros2_arm_orchestrator.move_arm(0,0,+65)
-                            ros2_arm_orchestrator.move_arm(0,0,+35)
+                            ros2_arm_orchestrator.move_arm(0,0,+45)
+                            ros2_arm_orchestrator.move_arm(0,0,+15)
 
                             joint_positions_list = joint_positions_deposit_box
                             #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)

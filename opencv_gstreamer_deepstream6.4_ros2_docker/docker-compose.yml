@@ -26,9 +26,9 @@ services:
               capabilities: [gpu]
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - $XAUTHORITY:/root/.Xauthority
+      #- $XAUTHORITY:/root/.Xauthority
       - ../shared_with_docker:/shared_with_docker
-      - ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
+      #- ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
     devices:
       - /dev:/dev
     environment:
@@ -58,8 +58,8 @@ services:
               capabilities: [gpu]
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix  # For GUI if needed
-      - $XAUTHORITY:/root/.Xauthority
-      - ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
+      #- $XAUTHORITY:/root/.Xauthority
+      #- ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
       - ./yolo_ws:/yolo_ws  # Mount your YOLO workspace
       - ../shared_with_docker:/shared_with_docker  # Share data with MoveIt2
       - /dev/video0:/dev/video0  # Camera access (adjust device as needed)
