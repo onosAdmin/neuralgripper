@@ -260,7 +260,7 @@ class ros2ArmOrchestrator(Node):
 
 
     def close_gripper(self):
-        clamp_deg = 158
+        clamp_deg = 89
         motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
 
         if motion_result:
@@ -278,7 +278,7 @@ class ros2ArmOrchestrator(Node):
 
 
     def open_gripper(self):
-        clamp_deg = 42
+        clamp_deg = 20
         motion_result = move_gripper_to_position(joint6_deg=-70.0, clamp_deg=clamp_deg,init=False)
 
         if motion_result:
