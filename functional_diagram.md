@@ -31,9 +31,11 @@ There is the code.py running on esp32 that will read the received command and mo
 
 
 
+# Robotic Arm System Architecture
 
+This diagram shows the functional architecture of the robotic arm system with data flow between components.
 
-
+```mermaid
 graph TD
     %% Vision System
     A[Camera] --> B[yolo_class_direction_provider_publisher.py]
@@ -77,4 +79,30 @@ graph TD
         L4[Hardware Layer]:::hardware
         L5[User Interface]:::interface
     end
+```
 
+## Component Descriptions
+
+### Vision System (Blue)
+- **Camera**: Captures real-time images of the workspace
+- **YOLO Detection**: Identifies and locates LEGO bricks in the scene
+
+### Planning & Decision Layer (Purple)
+- **Arm Orchestrator**: Makes high-level decisions about arm movements
+- **socket_arm_mover01**: Executes specific movement commands
+- **MoveIt2 Server**: Handles motion planning and collision detection
+
+### Execution Control (Green)
+- **ESP32 Interface**: Bridges ROS2 and hardware communication
+
+### Hardware Layer (Orange)
+- **ESP32**: Microcontroller managing servo motors
+- **Physical Robot Arm**: The actual robotic hardware
+
+### Data Flow
+1. Camera → YOLO detection of objects
+2. Object coordinates sent to orchestrator
+3. Relative movement commands generated
+4. MoveIt2 calculates feasible paths
+5. Joint states transmitted to ESP32
+6. Servo motors execute movements
