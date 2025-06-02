@@ -10,6 +10,7 @@ docker-compose up -d moveit2
 
 docker exec -it $(docker ps | grep moveit2 | awk '{print $1}')   /bin/bash  && source /opt/ros/rolling/setup.bash
 cd /shared_with_docker/  && source install/setup.bash && source /opt/ros/rolling/setup.bash
+cd /shared_with_docker/  && colcon build --packages-select robotic_arm7  && source install/setup.bash
 ros2 launch robotic_arm7 demo.launch.py
 
 
