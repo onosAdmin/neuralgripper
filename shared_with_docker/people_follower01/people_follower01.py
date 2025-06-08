@@ -15,14 +15,106 @@ list_of_servo_with_270_degree = ["joint3"]
 # Initialize YOLO model
 model = YOLO('yolov10x.pt')
 
-# Initialize webcam
-cap = cv2.VideoCapture(0)
-cap.set(3, 640)
-cap.set(4, 480)
+# Camera configuration
+camera_id = 2
+cap = None
+camera_retry_delay = 2.0  # seconds between camera reconnection attempts
+max_camera_retries = 5    # max consecutive retries before longer delay
+camera_retry_count = 0
 
+def initialize_camera():
+    """Initialize camera with retry logic"""
+    global cap, camera_retry_count
+    
+    while True:
+        try:
+            if cap is not None:
+                cap.release()
+                cap = None
+            
+            print(f"Attempting to open camera {camera_id}...")
+            cap = cv2.VideoCapture(camera_id)
+            
+            if cap.isOpened():
+                # Set camera properties
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                
+                # Test if we can actually read a frame
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    print(f"Camera {camera_id} initialized successfully")
+                    camera_retry_count = 0
+                    return True
+                else:
+                    print("Camera opened but couldn't read test frame")
+                    cap.release()
+                    cap = None
+            
+            camera_retry_count += 1
+            if camera_retry_count <= max_camera_retries:
+                print(f"Camera initialization failed. Retry {camera_retry_count}/{max_camera_retries} in {camera_retry_delay}s...")
+                time.sleep(camera_retry_delay)
+            else:
+                print(f"Camera initialization failed after {max_camera_retries} retries. Waiting 10s before trying again...")
+                time.sleep(10)
+                camera_retry_count = 0
+                
+        except Exception as e:
+            print(f"Exception during camera initialization: {e}")
+            if cap is not None:
+                cap.release()
+                cap = None
+            time.sleep(camera_retry_delay)
 
-if not cap.isOpened():
-    print("Error: Could not open webcam.")
+def reconnect_camera():
+    """Reconnect camera after connection loss"""
+    print("Camera connection lost. Attempting to reconnect...")
+    
+    # Try to reinitialize camera
+    initialize_camera()
+
+def read_frame_with_retry():
+    """Read frame with automatic reconnection on failure"""
+    global cap
+    max_read_retries = 3
+    read_retry_count = 0
+    
+    while read_retry_count < max_read_retries:
+        try:
+            if cap is None or not cap.isOpened():
+                print("Camera not available, attempting to reconnect...")
+                reconnect_camera()
+                continue
+            
+            ret, frame = cap.read()
+            
+            if ret and frame is not None:
+                return ret, frame
+            else:
+                print(f"Failed to read frame (attempt {read_retry_count + 1}/{max_read_retries})")
+                read_retry_count += 1
+                
+                if read_retry_count < max_read_retries:
+                    time.sleep(0.1)  # Brief delay before retry
+                
+        except Exception as e:
+            print(f"Exception while reading frame: {e}")
+            read_retry_count += 1
+            
+            if read_retry_count < max_read_retries:
+                time.sleep(0.1)
+    
+    # If we get here, all read attempts failed
+    print("All frame read attempts failed. Reconnecting camera...")
+    reconnect_camera()
+    return False, None
+
+# Initialize camera with retry logic
+initialize_camera()
+
+if cap is None:
+    print("Error: Could not initialize webcam after retries.")
     exit()
 
 # Robotic arm control parameters
@@ -48,10 +140,6 @@ def map_value(value, in_min, in_max, out_min, out_max):
     value = constrain(value, in_min, in_max)
     return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
-
-
-
-
 def control_servos_with_serial_port(x_pos, y_pos,grabber_position="x"):
     """Send properly scaled servo commands"""
     # Prepare joint commands
@@ -74,7 +162,6 @@ def control_servos_with_serial_port(x_pos, y_pos,grabber_position="x"):
         {"joint6": "x"},
         {"joint7": "x"},  #add here grabber_position
     ]
-
 
     command_parts = []
     
@@ -103,23 +190,15 @@ def control_servos_with_serial_port(x_pos, y_pos,grabber_position="x"):
     print(f"Sent command: {command}")
     os.system(f'echo "{command}" > {serial_port}')
 
-
-
-
-
-
 def open_arm():
     command = "x,x,x,x,x,x,0,20;"
     print(f"Sent command: {command}")
     os.system(f'echo "{command}" > {serial_port}')
 
-
-
 def close_arm():
     command = "x,x,x,x,x,x,x,60;"
     print(f"Sent command: {command}")
     os.system(f'echo "{command}" > {serial_port}')
-
 
 def draw_cross(frame):
     """Draw a red cross dividing the frame into 4 equal parts"""
@@ -137,9 +216,6 @@ def calculate_proportional_step(distance, frame_size):
     """Calculate proportional servo step based on distance from center"""
     normalized_distance = abs(distance) / (frame_size / 2)
     return int(normalized_distance * MAX_SERVO_STEP)
-
-
-
 
 def move_arm(diff_x, diff_y, frame_width, frame_height,grabber_position="x"):
     """Move arm proportionally based on distance from center"""
@@ -205,9 +281,10 @@ def process_frame(frame, center_x, center_y):
     return found_objects
 
 def main():
-    global servo_x_position, servo_y_position, processing_allowed, last_move_time
+    global servo_x_position, servo_y_position, processing_allowed, last_move_time, cap
     open_arm()
     centered_times = 0
+    
     while True:
         current_time = time.time()
         
@@ -215,10 +292,13 @@ def main():
         if not processing_allowed and (current_time - last_move_time) > STABILIZATION_DELAY:
             processing_allowed = True
         
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame.")
-            break
+        # Use the new robust frame reading method
+        ret, frame = read_frame_with_retry()
+        if not ret or frame is None:
+            # If we still can't read after retries, continue to next iteration
+            print("Skipping frame processing due to camera read failure")
+            time.sleep(0.1)  # Brief delay before trying again
+            continue
         
         # Draw cross and get center coordinates
         center_x, center_y = draw_cross(frame)
@@ -264,13 +344,32 @@ def main():
 
             else:
                 centered_times = 0  
+        
+        # Add camera status indicator
+        cv2.putText(frame, f"Cam: {camera_id} OK", (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
         # Always show the frame (even during stabilization)
         cv2.imshow('Person Tracking', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     
-    cap.release()
+    # Cleanup
+    if cap is not None:
+        cap.release()
+        print("Webcam released")
     cv2.destroyAllWindows()
+    print("Display windows closed")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Script interrupted by user.")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+    finally:
+        # Final cleanup
+        if cap is not None:
+            cap.release()
+        cv2.destroyAllWindows()

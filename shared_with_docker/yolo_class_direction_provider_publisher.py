@@ -9,6 +9,7 @@ import socket
 
 # This node will detect the selected class and will provide direction to center it on the webcam over ros2
 # Modified to require 3 sequential detections of the same object in a similar position before sending a command.
+# Added robust camera reconnection logic to handle camera disconnections.
 
 # --- Socket Client Configuration ---
 SERVER_HOST = 'moveit2'  # IP address of the YoloDataSubscriber server
@@ -30,15 +31,15 @@ class ArmDirectionProvider:
         #self.model = YOLO('best_second_train.pt')
         #self.model = YOLO('best_yolo12m.pt')
 
-        # Initialize webcam
-        #self.cap = cv2.VideoCapture(2) for laptop with webcam
-        self.cap = cv2.VideoCapture(0)
-
-        self.cap.set(3, 640)
-        self.cap.set(4, 480)
-        if not self.cap.isOpened():
-            self.log_error("Could not open webcam.") 
-            exit()
+        # Camera configuration
+        self.camera_id = 2
+        self.cap = None
+        self.camera_retry_delay = 2.0  # seconds between camera reconnection attempts
+        self.max_camera_retries = 5    # max consecutive retries before longer delay
+        self.camera_retry_count = 0
+        
+        # Initialize webcam with retry logic
+        self.initialize_camera()
 
         # Robotic arm control parameters
         self.servo_x_request = 0
@@ -74,6 +75,97 @@ class ArmDirectionProvider:
         # print(f"[DEBUG] {time.strftime('%Y-%m-%d %H:%M:%S')} {message}")
         pass
 
+    def initialize_camera(self):
+        """Initialize camera with retry logic"""
+        while True:
+            try:
+                if self.cap is not None:
+                    self.cap.release()
+                    self.cap = None
+                
+                self.log_info(f"Attempting to open camera {self.camera_id}...")
+                self.cap = cv2.VideoCapture(self.camera_id)
+                
+                if self.cap.isOpened():
+                    # Set camera properties
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    
+                    # Test if we can actually read a frame
+                    ret, test_frame = self.cap.read()
+                    if ret and test_frame is not None:
+                        self.log_info(f"Camera {self.camera_id} initialized successfully")
+                        self.camera_retry_count = 0
+                        return True
+                    else:
+                        self.log_warning("Camera opened but couldn't read test frame")
+                        self.cap.release()
+                        self.cap = None
+                
+                self.camera_retry_count += 1
+                if self.camera_retry_count <= self.max_camera_retries:
+                    self.log_warning(f"Camera initialization failed. Retry {self.camera_retry_count}/{self.max_camera_retries} in {self.camera_retry_delay}s...")
+                    time.sleep(self.camera_retry_delay)
+                else:
+                    self.log_warning(f"Camera initialization failed after {self.max_camera_retries} retries. Waiting 10s before trying again...")
+                    time.sleep(10)
+                    self.camera_retry_count = 0
+                    
+            except Exception as e:
+                self.log_error(f"Exception during camera initialization: {e}")
+                if self.cap is not None:
+                    self.cap.release()
+                    self.cap = None
+                time.sleep(self.camera_retry_delay)
+
+    def reconnect_camera(self):
+        """Reconnect camera after connection loss"""
+        self.log_warning("Camera connection lost. Attempting to reconnect...")
+        
+        # Reset sequential detection state when camera disconnects
+        self.sequential_count = 0
+        self.last_detection_info = None
+        
+        # Send empty data to indicate camera is disconnected
+        self.send_arm_direction(0, 0, None, [], 0)
+        
+        # Try to reinitialize camera
+        self.initialize_camera()
+
+    def read_frame_with_retry(self):
+        """Read frame with automatic reconnection on failure"""
+        max_read_retries = 3
+        read_retry_count = 0
+        
+        while read_retry_count < max_read_retries:
+            try:
+                if self.cap is None or not self.cap.isOpened():
+                    self.log_warning("Camera not available, attempting to reconnect...")
+                    self.reconnect_camera()
+                    continue
+                
+                ret, frame = self.cap.read()
+                
+                if ret and frame is not None:
+                    return ret, frame
+                else:
+                    self.log_warning(f"Failed to read frame (attempt {read_retry_count + 1}/{max_read_retries})")
+                    read_retry_count += 1
+                    
+                    if read_retry_count < max_read_retries:
+                        time.sleep(0.1)  # Brief delay before retry
+                    
+            except Exception as e:
+                self.log_error(f"Exception while reading frame: {e}")
+                read_retry_count += 1
+                
+                if read_retry_count < max_read_retries:
+                    time.sleep(0.1)
+        
+        # If we get here, all read attempts failed
+        self.log_error("All frame read attempts failed. Reconnecting camera...")
+        self.reconnect_camera()
+        return False, None
 
     def connect_to_server(self):
         # Keep retrying connection  
@@ -206,7 +298,6 @@ class ArmDirectionProvider:
              self.target_class_name = None
              self.log_warning("Model does not have a class with ID 0. Prioritization of class 0 will not be possible.") 
 
-
         while True: # Changed from rclpy.ok() to an infinite loop for standalone script
             current_time = time.time()
 
@@ -214,11 +305,13 @@ class ArmDirectionProvider:
                 self.processing_allowed_by_delay = True
                 self.log_info("Stabilization delay over. Processing allowed again.") 
 
-
-            ret, frame = self.cap.read()
-            if not ret:
-                self.log_error("Could not read frame.") 
-                break
+            # Use the new robust frame reading method
+            ret, frame = self.read_frame_with_retry()
+            if not ret or frame is None:
+                # If we still can't read after retries, continue to next iteration
+                self.log_warning("Skipping frame processing due to camera read failure")
+                time.sleep(0.1)  # Brief delay before trying again
+                continue
 
             center_x, center_y = self.draw_cross(frame)
             height, width = frame.shape[:2]
@@ -251,7 +344,6 @@ class ArmDirectionProvider:
                                 (obj['x'] + 10, obj['y'] - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-
                 x1, y1, x2, y2 = best_current_obj['box']
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
                 cv2.circle(frame, (best_current_obj['x'], best_current_obj['y']), 5, (255, 0, 0), -1)
@@ -260,7 +352,6 @@ class ArmDirectionProvider:
                 cv2.putText(frame, f"Diff X: {best_current_obj['diff_x']} Diff Y: {best_current_obj['diff_y']}",
                         (best_current_obj['x'] + 10, best_current_obj['y'] - 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-
 
                 if best_current_obj:
                     is_similar_to_last = False
@@ -309,7 +400,6 @@ class ArmDirectionProvider:
                                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                             self.move_arm(diff_x, diff_y, width, height,best_current_obj, all_found_objects, main_object_centered)
 
-
                     elif self.sequential_count < 3:
                         cv2.putText(frame, f"Stabilizing ({self.sequential_count}/3)",
                                     (center_x - 120, center_y - 30),
@@ -323,27 +413,48 @@ class ArmDirectionProvider:
                  best_current_obj = None
                  self.send_arm_direction(0, 0, None, [], 0)
 
-
             if not self.processing_allowed_by_delay:
                  remaining_delay = self.STABILIZATION_DELAY - (current_time - self.last_move_time)
                  cv2.putText(frame, f"Delay: {max(0, remaining_delay):.1f}s",
                             (center_x - 80, center_y + 40),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (128, 128, 128), 2)
 
+            # Add camera status indicator
+            cv2.putText(frame, f"Cam: {self.camera_id} OK", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
             cv2.imshow('Object Tracking', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-        # Cleanup
-        self.cap.release()
-        cv2.destroyAllWindows()
-        self.log_info("Webcam released and windows closed.") 
+        # Cleanup will be handled in destroy method
+        self.log_info("Main loop ended") 
 
     # Simplified destroy method for a non-ROS node
     def destroy(self):
-        self.log_info("Closing socket client.") 
-        self.client_socket.close()
+        self.log_info("Shutting down...")
+        
+        # Send final stop command
+        try:
+            self.send_arm_direction(0, 0, None, [], 0)
+        except:
+            pass
+            
+        # Release camera
+        if self.cap is not None:
+            self.cap.release()
+            self.log_info("Webcam released")
+            
+        # Close display windows
+        cv2.destroyAllWindows()
+        self.log_info("Display windows closed")
+        
+        # Close socket
+        self.log_info("Closing socket client")
+        try:
+            self.client_socket.close()
+        except:
+            pass
 
 
 def main():
@@ -352,6 +463,8 @@ def main():
         arm_direction_provider.run()
     except KeyboardInterrupt:
         arm_direction_provider.log_info("Script interrupted by user.")
+    except Exception as e:
+        arm_direction_provider.log_error(f"Unexpected error: {e}")
     finally:
         arm_direction_provider.destroy()
 
