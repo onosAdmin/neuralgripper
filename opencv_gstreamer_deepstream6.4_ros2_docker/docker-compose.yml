@@ -7,8 +7,8 @@ networks:
 
 services:
   moveit2:
-    #image: moveit/moveit2:main-jazzy-tutorial-source
-    image: moveit/moveit2:main-rolling-tutorial-source
+    image: moveit/moveit2:rolling-release
+    #image: moveit/moveit2:main-rolling-tutorial-source
     container_name: moveit2_container
     privileged: true
     # Use the user-defined network instead of host network
@@ -26,7 +26,7 @@ services:
               capabilities: [gpu]
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      #- $XAUTHORITY:/root/.Xauthority
+      - $XAUTHORITY:/root/.Xauthority
       - ../shared_with_docker:/shared_with_docker
       #- ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
     devices:
@@ -58,7 +58,7 @@ services:
               capabilities: [gpu]
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix  # For GUI if needed
-      #- $XAUTHORITY:/root/.Xauthority
+      - $XAUTHORITY:/root/.Xauthority
       #- ./cyclonedds.xml:/cyclonedds.xml:ro  # Mount the DDS configuration
       - ./yolo_ws:/yolo_ws  # Mount your YOLO workspace
       - ../shared_with_docker:/shared_with_docker  # Share data with MoveIt2
@@ -72,4 +72,3 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       #ROS_DOMAIN_ID: 42  # Ensures both containers are in the same ROS domain
       #CYCLONEDDS_URI: file:///cyclonedds.xml
-

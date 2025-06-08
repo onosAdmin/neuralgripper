@@ -506,8 +506,6 @@ def main(args=None):
         -85.0,
     ]
 
-
-
     joint_positions_deposit_box = [
         60.0,
         -12.0,
@@ -533,6 +531,138 @@ def main(args=None):
     ]
 
 
+    
+    joint_positions_pose0 = [
+        -64.0,
+        -49,
+        61.0,
+        99.0,
+        44.0,
+        -25.0,
+    ]
+    joint_positions_pose1 = [
+        -52.0,
+        -36,
+        55.0,
+        106.0,
+        29.0,
+        -34.0,
+    ]
+    
+    
+    joint_positions_pose2 = [
+        -2.0,
+        -22,
+        2.0,
+        113.0,
+        1.0,
+        -41.0,
+    ]
+    
+    
+    joint_positions_pose3 = [
+        88.0,
+        63,
+        -5.0,
+        -104.0,
+        -35.0,
+        -42.0,
+    ]
+    
+    
+    
+    joint_positions_pose4 = [
+        0.0,
+        54,
+        16.0,
+        -92.0,
+        26.0,
+        59.0,
+    ]
+    
+    
+    joint_positions_pose5 = [
+        58.0,
+        57,
+        -22.0,
+        -94.0,
+        -22.0,
+        60.0,
+    ]
+        
+    
+    joint_positions_pose6 = [
+        55.0,
+        -42,
+        -48.0,
+        103.0,
+        1.0,
+        -59.0,
+    ]
+        
+        
+    joint_positions_pose7 = [
+        -18.0,
+        71,
+        -9.0,
+        -82.0,
+        46.0,
+        -5.0,
+    ]
+    joint_positions_pose8 = [
+        42.0,
+        19,
+        -18.0,
+        -99.0,
+        1.0,
+        74.0,
+    ]
+    
+    
+    joint_positions_pose9 = [
+        79.0,
+        64,
+        -19.0,
+        -69.0,
+        -71.0,
+        -74.0,
+    ]
+    
+    joint_positions_pose10 = [
+        35.0,
+        45,
+        -24.0,
+        -87.0,
+        -24.0,
+        -46.0,
+    ]
+    
+    joint_positions_pose11 = [
+        -31.0,
+        44,
+        22.0,
+        -88.0,
+        21.0,
+        -45.0,
+    ]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    show_moves = [joint_positions_pose0,joint_positions_pose1,joint_positions_pose2,joint_positions_pose3,joint_positions_pose4,joint_positions_pose5,joint_positions_pose6,joint_positions_pose7,joint_positions_pose8,joint_positions_pose9,joint_positions_pose10,joint_positions_pose11]
+
+    
+    
+    
+    
+    
+    
 
     rclpy.init(args=args)
     ros2_arm_orchestrator = ros2ArmOrchestrator()
@@ -547,6 +677,15 @@ def main(args=None):
         print("\nMotion TO START position failed. Please check the error messages.")
 
 
+
+    for pos in show_moves:
+        joint_positions_list = pos
+        #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+        motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+        if motion_result:
+            print("\nMotion To position completed successfully!")
+        else:
+            print("\nMotion To position failed. Please check the error messages.")
 
     # joint_positions_list = joint_positions_list_max
 
@@ -649,7 +788,8 @@ def main(args=None):
                         
                         else:
                             print(f"Object centered  for {object_centered_count} ")
-                            object_centered_count = object_centered_count - 0.1
+                            if object_centered_count > 0:
+                                object_centered_count = object_centered_count - 0.1
                         
                         
                         continue

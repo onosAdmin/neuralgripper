@@ -25,7 +25,10 @@ class ArmDirectionProvider:
 
         # Initialize YOLO model
         #self.model = YOLO('/shared_with_docker/weights/rock_weights_best4.pt')
+        
         self.model = YOLO('best_lego_detect.pt')
+        #self.model = YOLO('best_second_train.pt')
+        #self.model = YOLO('best_yolo12m.pt')
 
         # Initialize webcam
         #self.cap = cv2.VideoCapture(2) for laptop with webcam

@@ -58,21 +58,30 @@
         <joint name="joint5" value="1.4272"/>
         <joint name="rotating_base" value="-0.8168"/>
     </group_state>
+    
+    <group_state name="arm_people_follower" group="arm_group">
+        <joint name="rotating_base" value="0"/>
+        <joint name="joint1" value="0.872665"/>
+        <joint name="joint2" value="0"/>
+        <joint name="joint3" value="-1.43117"/>
+        <joint name="joint4" value="0"/>
+        <joint name="joint5" value="-1.22173"/>
+    </group_state>    
+    
+    
+    
+    
     <group_state name="gripper_open" group="gripper_group">
         <joint name="clamp_moving_joint" value="0.7854"/>
-        <joint name="joint6" value="0.009"/>
-    </group_state>
-    <group_state name="gripper_half_close" group="gripper_group">
-        <joint name="clamp_moving_joint" value="-0.2199"/>
-        <joint name="joint6" value="0"/>
+        <joint name="joint6" value="0.349066"/>
     </group_state>
     <group_state name="gripper_closed" group="gripper_group">
         <joint name="clamp_moving_joint" value="-0.7854"/>
-        <joint name="joint6" value="0"/>
+        <joint name="joint6" value="1.55334"/>
     </group_state>
     <group_state name="gripper_rotated" group="gripper_group">
         <joint name="clamp_moving_joint" value="0.0494"/>
-        <joint name="joint6" value="1.2836"/>
+        <joint name="joint6" value="0.349066"/>
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="gripper" parent_link="link_grabber" group="gripper_group"/>

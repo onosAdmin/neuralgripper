@@ -15,7 +15,7 @@ x,x,x,x,x,x,x,130;
 servo_pins = [ board.GPIO39, board.GPIO38,board.GPIO45,board.GPIO21,board.GPIO16,board.GPIO18,board.GPIO8,board.GPIO47]  # Change to match your setup
 echo "155,127,127,127,127,127,127,x;" > /dev/ttyACM0
 
-90,90,90,90,90,90,90,0;
+90,90,90,90,90,90,90,20;
 
 """
 import board
