@@ -41,7 +41,7 @@ services:
 
   # YOLO Container for object detection
   yoloros2:
-    image: yoloros2/test2  # Base image with YOLO     docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
+    image: yoloros2/test3:latest  # Base image with YOLO     docker pull elettronicaopensource/yolo_ros2_opencv_gstreamer:test2
     container_name: yoloros2_container
     privileged: true
     # Use the user-defined network instead of host network
@@ -63,6 +63,7 @@ services:
       - ./yolo_ws:/yolo_ws  # Mount your YOLO workspace
       - ../shared_with_docker:/shared_with_docker  # Share data with MoveIt2
       - /dev/video0:/dev/video0  # Camera access (adjust device as needed)
+      - /dev/:/dev/ 
     devices:
       - /dev/video0:/dev/video0  # Camera device pass-through
     environment:

@@ -32,7 +32,7 @@ class ArmDirectionProvider:
         #self.model = YOLO('best_yolo12m.pt')
 
         # Camera configuration
-        self.camera_id = 2
+        self.camera_id = 0
         self.cap = None
         self.camera_retry_delay = 2.0  # seconds between camera reconnection attempts
         self.max_camera_retries = 5    # max consecutive retries before longer delay
@@ -47,7 +47,7 @@ class ArmDirectionProvider:
 
         self.MAX_SERVO_STEP = 15
         self.CENTER_THRESHOLD = 40
-        self.STABILIZATION_DELAY = 0.85
+        self.STABILIZATION_DELAY = 0.65
         self.confidence_threshold = 0.70
 
         # Movement control variables

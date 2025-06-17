@@ -294,7 +294,7 @@ class ros2ArmOrchestrator(Node):
 
 
 
-    def get_yolo_data(self):
+    def get_direction_data(self):
         """Return the latest message data and clear the queue"""
 
         with self.latest_msg_lock:
@@ -679,6 +679,7 @@ def main(args=None):
 
 
     for pos in show_moves:
+        break
         joint_positions_list = pos
         #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
         motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
@@ -732,71 +733,88 @@ def main(args=None):
         while rclpy.ok():
             # Example usage of the new functions:
             # Get latest yolo data
-            yolo_data = ros2_arm_orchestrator.get_yolo_data()
-            if yolo_data:
-                print(f"Latest YOLO data: {yolo_data}")
+            direction_data = ros2_arm_orchestrator.get_direction_data()
+            if direction_data:
+                print(f"Latest direction data: {direction_data}")
                 # Parse the data and extract x,y if needed
                 try:
-                    data = json.loads(yolo_data)
-                    delta_x =  data.get('x_requested_move', None)
-                    delta_y = data.get('y_requested_move', None)
-                    found_objects = data.get('found_objects', None)
-                    main_obj_centered = data.get('main_object_centered', None)
-                    main_target_object = data.get('main_target_object', None)
+                    data = json.loads(direction_data)
 
-                    if len(found_objects) == 0:
-                        print("No objects found,put a scan function here")
-                        continue
-
-                    if main_obj_centered:
-                        object_centered_count = object_centered_count + 1
-                        if object_centered_count > 5:
-                            object_centered_count = 0
-                            print("Object centered and ready for pick up ,put a centering function here")
-                            ros2_arm_orchestrator.move_arm(0,0,-45)
-                            ros2_arm_orchestrator.move_arm(0,0,-35)
-                            ros2_arm_orchestrator.move_arm(0,0,-25)
-                            ros2_arm_orchestrator.move_arm(0,0,-10)
-                            ros2_arm_orchestrator.move_arm(0,0,-10)
+                    if data.get('cmd_type', None) == 'joystick':
+                        if data.get('Joystick_left', None) == 1:
+                            ros2_arm_orchestrator.move_arm(10,0,0)
+                        if data.get('Joystick_right', None) == 1:
+                            ros2_arm_orchestrator.move_arm(-10,0,0)
+                        if data.get('Joystick_up', None) == 1:
+                            ros2_arm_orchestrator.move_arm(0,10,0)
+                        if data.get('Joystick_down', None) == 1:
+                            ros2_arm_orchestrator.move_arm(0,-10,0)
+                        if data.get('Joystick_triangle', None) == 1:
+                            ros2_arm_orchestrator.move_arm(0,0,10)
+                        if data.get('Joystick_x', None) == -1:
                             ros2_arm_orchestrator.move_arm(0,0,-10)
 
-                            ros2_arm_orchestrator.close_gripper()
-                            ros2_arm_orchestrator.move_arm(0,0,+65)
-                            ros2_arm_orchestrator.move_arm(0,0,+50)
-                            ros2_arm_orchestrator.move_arm(0,0,+15)
-                            ros2_arm_orchestrator.move_arm(0,0,+15)
 
-                            joint_positions_list = joint_positions_deposit_box
-                            #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
-                            motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
-                            if motion_result:
-                                print("\nMotion TO DEPOSIT position completed successfully!")
-                            else:
-                                print("\nMotion TO DEPOSIT position failed. Please check the error messages.")
-
-
-                            ros2_arm_orchestrator.open_gripper()
-
-                            joint_positions_list = joint_positions_list_mid  
-                            #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
-                            motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
-                            if motion_result:
-                                print("\nMotion TO MID position completed successfully!")
-                            else:
-                                print("\nMotion TO MID position failed. Please check the error messages.")
-                        
-                        
-                        else:
-                            print(f"Object centered  for {object_centered_count} ")
-                            if object_centered_count > 0:
-                                object_centered_count = object_centered_count - 0.1
-                        
-                        
-                        continue
                     else:
-                        # Move arm if needed
-                        if delta_x is not None or delta_y is not None:
-                            ros2_arm_orchestrator.move_arm(delta_x, delta_y,0)
+                        delta_x =  data.get('x_requested_move', None)
+                        delta_y = data.get('y_requested_move', None)
+                        found_objects = data.get('found_objects', None)
+                        main_obj_centered = data.get('main_object_centered', None)
+                        main_target_object = data.get('main_target_object', None)
+
+                        if len(found_objects) == 0:
+                            print("No objects found,put a scan function here")
+                            continue
+
+                        if main_obj_centered:
+                            object_centered_count = object_centered_count + 1
+                            if object_centered_count > 3:
+                                object_centered_count = 0
+                                print("Object centered and ready for pick up ,put a centering function here")
+                                ros2_arm_orchestrator.move_arm(0,0,-45)
+                                ros2_arm_orchestrator.move_arm(0,0,-35)
+                                ros2_arm_orchestrator.move_arm(0,0,-25)
+                                ros2_arm_orchestrator.move_arm(0,0,-10)
+                                ros2_arm_orchestrator.move_arm(0,0,-10)
+                                ros2_arm_orchestrator.move_arm(0,0,-10)
+
+                                ros2_arm_orchestrator.close_gripper()
+                                ros2_arm_orchestrator.move_arm(0,0,+65)
+                                ros2_arm_orchestrator.move_arm(0,0,+50)
+                                ros2_arm_orchestrator.move_arm(0,0,+15)
+                                ros2_arm_orchestrator.move_arm(0,0,+15)
+
+                                joint_positions_list = joint_positions_deposit_box
+                                #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                                motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                                if motion_result:
+                                    print("\nMotion TO DEPOSIT position completed successfully!")
+                                else:
+                                    print("\nMotion TO DEPOSIT position failed. Please check the error messages.")
+
+
+                                ros2_arm_orchestrator.open_gripper()
+
+                                joint_positions_list = joint_positions_list_mid  
+                                #motion_result = move_arm_to_predefined_position(joint_positions_list=joint_positions_list)
+                                motion_result = ros2_arm_orchestrator.move_to_joint_positions(joint_positions_list)
+                                if motion_result:
+                                    print("\nMotion TO MID position completed successfully!")
+                                else:
+                                    print("\nMotion TO MID position failed. Please check the error messages.")
+                            
+                            
+                            else:
+                                print(f"Object centered  for {object_centered_count} ")
+                                if object_centered_count > 0:
+                                    object_centered_count = object_centered_count - 0.1
+                            
+                            
+                            continue
+                        else:
+                            # Move arm if needed
+                            if delta_x is not None or delta_y is not None:
+                                ros2_arm_orchestrator.move_arm(delta_x, delta_y,0)
 
                 except json.JSONDecodeError:
                     pass
