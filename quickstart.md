@@ -76,6 +76,22 @@ If you want people follower, disable all the moveit2 running scripts and then on
 cd /shared_with_docker/people_follower  && python3  people_follower01.py
 ```
 
+
+
+
+
+If you want yolo pose command, disable all the moveit2 running scripts and then on terminal5:
+cd /shared_with_docker/pyserial-3.5  && python3 setup.py install && cd /shared_with_docker/
+cd /shared_with_docker/yolo_pose_arm_controller/
+python3 yolo_pose_arm_controller.py 
+
+
+
+
+
+
+
+
 apt-get update
  apt-get install python3-pip
 python3 -m pip install torch==2.6.0     torchvision==0.21.0     ultralytics==8.3.111     numpy
