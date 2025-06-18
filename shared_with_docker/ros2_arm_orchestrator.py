@@ -382,7 +382,7 @@ class ros2ArmOrchestrator(Node):
 
 
     def move_arm(self, x, y, z):
-        """Move the arm to specified x,y coordinates and clear all messages"""
+        """Move the arm by a relative movement specified x,y,z and clear all messages"""
         try:
             # Clear all pending messages
             with self.latest_msg_lock:
@@ -742,13 +742,13 @@ def main(args=None):
 
                     if data.get('cmd_type', None) == 'joystick':
                         if data.get('Joystick_left', None) == 1:
-                            ros2_arm_orchestrator.move_arm(10,0,0)
+                            ros2_arm_orchestrator.move_arm(5,0,0)
                         if data.get('Joystick_right', None) == 1:
-                            ros2_arm_orchestrator.move_arm(-10,0,0)
+                            ros2_arm_orchestrator.move_arm(-5,0,0)
                         if data.get('Joystick_up', None) == 1:
-                            ros2_arm_orchestrator.move_arm(0,10,0)
+                            ros2_arm_orchestrator.move_arm(0,5,0)
                         if data.get('Joystick_down', None) == 1:
-                            ros2_arm_orchestrator.move_arm(0,-10,0)
+                            ros2_arm_orchestrator.move_arm(0,-5,0)
                         if data.get('Joystick_triangle', None) == 1:
                             ros2_arm_orchestrator.move_arm(0,0,10)
                         if data.get('Joystick_x', None) == -1:
