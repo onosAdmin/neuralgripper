@@ -2,7 +2,7 @@
 A neural network controlled robotic arm gripper
 
 
-[Youtube video](/[guides/content/editing-an-existing-page#modifying-front-matter](https://youtube.com/shorts/2i2FRM-j37M))
+[Youtube video](https://youtube.com/shorts/2i2FRM-j37M)
 
 
 ## Intro
